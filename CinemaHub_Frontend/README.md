@@ -1,11 +1,11 @@
 Members:
 
 1- Rawan Rabei (Team Leader)
-2- Yara Elfeky
-3- Yasmina Mohammed
-4- Sama Ayman
-5- Hagar Hany
-6- Engy Hesham
+2- Shahd Sayed
+3- Salma Essam
+4- Menna walid
+5- Sara Hatem
+6- Menna Helal
 
 Name: Star View Cinema
 
