@@ -28,6 +28,11 @@ const Booking = lazy(() => import("./Pages/Booking/Booking"));
 const NotFoundPage = lazy(() => import("./Pages/NotFound/NotFound"));
 const UserProfile = lazy(() => import("./Pages/UserProfile/UserProfile"));
 
+const Payment = lazy(() => import("./Pages/Payment/Payment"));
+const Confirmation = lazy(() => import("./Pages/Confirmation/Confirmation"));
+
+
+
 const DashboardLayout = lazy(() => import("./Layouts/DashboardLayout"));
 const AdminLayout = lazy(() => import("./Layouts/AdminLayout"));
 const ManagerLayout = lazy(() => import("./Layouts/ManagerLayout"));
@@ -72,6 +77,8 @@ function App() {
           <Route path="/about" element={<AboutUs />} />
           <Route path="/contact" element={<ContactUs />} />
           <Route path="/booking" element={<Booking />} />
+          <Route path="/payment" element={<Payment />} />
+          <Route path="/confirmation" element={<Confirmation />} />
         </Route>
         {/* --------------------------- Admin ---------------------------------  */}
         {/* Admin Section */}
