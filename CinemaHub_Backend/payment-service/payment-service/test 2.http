@@ -1,0 +1,10 @@
+POST http://localhost:8083/api/payments
+Content-Type: application/json
+Authorization: Bearer PUT_YOUR_TOKEN_HERE
+
+{
+  "bookingId": 3,
+  "userId": 1,
+  "amount": 300,
+  "paymentMethod": "CARD"
+}

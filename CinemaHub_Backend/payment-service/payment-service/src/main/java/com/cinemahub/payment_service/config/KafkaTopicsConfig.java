@@ -1,0 +1,35 @@
+package com.cinemahub.payment_service.config;
+
+import org.apache.kafka.clients.admin.NewTopic;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.kafka.config.TopicBuilder;
+
+@Configuration
+public class KafkaTopicsConfig {
+
+    // Topics for Payment Service
+    @Bean
+    public NewTopic paymentRequestedTopic() {
+        return TopicBuilder.name("payment-requested")
+                .partitions(3)
+                .replicas(1)
+                .build();
+    }
+
+    @Bean
+    public NewTopic paymentCompletedTopic() {
+        return TopicBuilder.name("payment-completed")
+                .partitions(3)
+                .replicas(1)
+                .build();
+    }
+
+    @Bean
+    public NewTopic paymentFailedTopic() {
+        return TopicBuilder.name("payment-failed")
+                .partitions(3)
+                .replicas(1)
+                .build();
+    }
+}

@@ -1,0 +1,13 @@
+POST http://localhost:8083/api/payments
+Content-Type: application/json
+
+{
+  "bookingId": 2,
+  "userId": 2,
+  "amount": 250,
+  "paymentMethod": "CARD"
+}
+
+###
+
+GET http://localhost:8083/api/payments
