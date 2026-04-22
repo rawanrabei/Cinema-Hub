@@ -21,11 +21,13 @@ public class User {
     private Long id;
     @Column(unique = true)
     private String username;
+    @Column(unique = true)
+    private String email;
     private String password;
-    
+
     @Enumerated(EnumType.STRING)
     private Role role = Role.USER;
-    
+
     public enum Role {
         ADMIN, MANAGER, USER
     }

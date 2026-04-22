@@ -13,7 +13,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/v1/auth")
+@RequestMapping("/api/auth")
 public class AuthenticationController {
 
     private AuthenticationManager authenticationManager;
@@ -34,12 +34,12 @@ public class AuthenticationController {
         this.jwtUtils = jwtUtils;
     }
 
-    @PostMapping("/signin")
+    @PostMapping("/login")
     public String authenticateUser(@RequestBody User user) {
 
         Authentication authentication = authenticationManager.authenticate(
             new UsernamePasswordAuthenticationToken(
-                user.getUsername(),
+                user.getEmail(),
                 user.getPassword()
         ));
 
@@ -47,15 +47,19 @@ public class AuthenticationController {
         return jwtUtils.generateToken(userDetails.getUsername());
     }
 
-    @PostMapping("/signup")
+    @PostMapping("/register")
     public String registerUser(@RequestBody User user) {
 
-        if (userRepository.existsByUsername(user.getUsername()))
+        if (userRepository.existsByEmail(user.getEmail()))
             return "User already exists!";
 
         User newUser = new User();
         newUser.setUsername(user.getUsername());
+        newUser.setEmail(user.getEmail());
         newUser.setPassword(encoder.encode(user.getPassword()));
+        if (user.getRole() != null) {
+            newUser.setRole(user.getRole());
+        }
 
         userRepository.save(newUser);
 
