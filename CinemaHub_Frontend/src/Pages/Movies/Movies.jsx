@@ -2,32 +2,70 @@ import React, { useMemo, useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { FaStar, FaClock, FaFilm } from "react-icons/fa";
 import { useTheme } from "../../context/ThemeContext";
-import moviesData from "../../data/moviesData";
+import { useAuth } from "../../context/AuthContext";
+
+const API_BASE_URL = "http://localhost:8080";
 
 const Movies = () => {
   const { isDarkMode, colors } = useTheme();
+  const { token } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const [movies, setMovies] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, [location.pathname]);
 
+  useEffect(() => {
+    const fetchMovies = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/movies`, {
+          headers: {
+            ...(token && { Authorization: `Bearer ${token}` }),
+          },
+        });
+        if (response.ok) {
+          const data = await response.json();
+          // Transform API data to match frontend structure
+          const transformedMovies = data.map((movie) => ({
+            id: movie.id,
+            title: movie.title,
+            description: movie.description,
+            duration: `${movie.duration} min`,
+            rating: movie.rating ? movie.rating.toString() : "4.5",
+            tagline: movie.description?.substring(0, 100) + "...",
+            genres: movie.genres || ["Action", "Drama"],
+            thumbnail: movie.posterUrl || "/cinemas/c.jpg",
+          }));
+          setMovies(transformedMovies);
+        }
+      } catch (error) {
+        console.error("Error fetching movies:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchMovies();
+  }, [token]);
+
   const categories = useMemo(() => {
     const unique = new Set();
-    moviesData.forEach((movie) =>
+    movies.forEach((movie) =>
       movie.genres.forEach((genre) => unique.add(genre))
     );
     return ["All Movies", ...Array.from(unique)];
-  }, []);
+  }, [movies]);
 
   const [activeCategory, setActiveCategory] = useState("All Movies");
   const [moviesToShow, setMoviesToShow] = useState(6);
 
   const filteredMovies =
     activeCategory === "All Movies"
-      ? moviesData
-      : moviesData.filter((movie) => movie.genres.includes(activeCategory));
+      ? movies
+      : movies.filter((movie) => movie.genres.includes(activeCategory));
 
   const displayedMovies = filteredMovies.slice(0, moviesToShow);
   const hasMoreMovies = filteredMovies.length > moviesToShow;
@@ -36,10 +74,17 @@ const Movies = () => {
     setMoviesToShow((prev) => prev + 6);
   };
 
-  
   useEffect(() => {
     setMoviesToShow(6);
   }, [activeCategory]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p>Loading movies...</p>
+      </div>
+    );
+  }
 
   return (
     <div

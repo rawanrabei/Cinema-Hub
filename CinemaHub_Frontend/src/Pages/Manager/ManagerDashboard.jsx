@@ -17,14 +17,20 @@ import {
   X,
 } from "lucide-react";
 import { useTheme } from "../../context/ThemeContext";
+import { useAuth } from "../../context/AuthContext";
+
+const API_BASE_URL = "http://localhost:8080";
 
 const ManagerDashboard = () => {
   const { isDarkMode } = useTheme();
+  const { token } = useAuth();
   const BRAND_COLOR = isDarkMode ? "#3b82f6" : "#FF0800";
   const [activeTab, setActiveTab] = useState("bookings");
   const [searchTerm, setSearchTerm] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingMovieId, setEditingMovieId] = useState(null);
+  const [movies, setMovies] = useState([]);
+  const [loading, setLoading] = useState(false);
 
   const [bookings, setBookings] = useState([
     {
@@ -56,31 +62,42 @@ const ManagerDashboard = () => {
     },
   ]);
 
-  const [movies, setMovies] = useState([
-    {
-      id: 1,
-      title: "Shadow Operative",
-      hall: "Hall A",
-      seats: 120,
-      times: ["10:30 AM", "2:00 PM"],
-      status: "Active",
-    },
-    {
-      id: 2,
-      title: "Eternal Love",
-      hall: "Hall B",
-      seats: 80,
-      times: ["3:00 PM", "7:00 PM"],
-      status: "Active",
-    },
-  ]);
-
   const [newMovie, setNewMovie] = useState({
     title: "",
-    hall: "",
-    seats: "",
-    times: "",
+    description: "",
+    duration: "",
+    rating: "",
+    amount: "",
+    posterUrl: "",
+    director: "",
+    language: "",
+    status: "Active",
+    genres: "",
   });
+
+  // Fetch movies from API
+  useEffect(() => {
+    const fetchMovies = async () => {
+      setLoading(true);
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/movies`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setMovies(data);
+        }
+      } catch (error) {
+        console.error('Error fetching movies:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchMovies();
+  }, [token]);
 
   useEffect(() => {
     if (editingMovieId) {
@@ -88,13 +105,19 @@ const ManagerDashboard = () => {
       if (movie) {
         setNewMovie({
           title: movie.title,
-          hall: movie.hall,
-          seats: movie.seats,
-          times: movie.times.join(", "),
+          description: movie.description,
+          duration: movie.duration,
+          rating: movie.rating,
+          amount: movie.amount,
+          posterUrl: movie.posterUrl,
+          director: movie.director,
+          language: movie.language,
+          status: movie.status,
+          genres: movie.genres ? movie.genres.join(', ') : '',
         });
       }
     } else {
-      setNewMovie({ title: "", hall: "", seats: "", times: "" });
+      setNewMovie({ title: "", description: "", duration: "", rating: "", amount: "", posterUrl: "", director: "", language: "", status: "Active", genres: "" });
     }
   }, [editingMovieId, movies]);
 
@@ -115,34 +138,74 @@ const ManagerDashboard = () => {
     setIsModalOpen(true);
   };
 
-  const handleDeleteMovie = (id) => {
-    setMovies(movies.filter((m) => m.id !== id));
+  const handleDeleteMovie = async (id) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/movies/${id}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (response.ok) {
+        setMovies(movies.filter((m) => m.id !== id));
+      }
+    } catch (error) {
+      console.error('Error deleting movie:', error);
+    }
   };
 
-  const handleSubmitMovie = (e) => {
+  const handleSubmitMovie = async (e) => {
     e.preventDefault();
 
     const movieData = {
       title: newMovie.title,
-      hall: newMovie.hall,
-      seats: newMovie.seats,
-      times:
-        typeof newMovie.times === "string"
-          ? newMovie.times.split(",").map((t) => t.trim())
-          : newMovie.times,
-      status: "Active",
+      description: newMovie.description,
+      duration: parseInt(newMovie.duration),
+      rating: parseFloat(newMovie.rating),
+      amount: parseFloat(newMovie.amount),
+      posterUrl: newMovie.posterUrl,
+      director: newMovie.director,
+      language: newMovie.language,
+      status: newMovie.status,
+      genres: newMovie.genres ? newMovie.genres.split(',').map(g => g.trim()) : [],
     };
 
-    if (editingMovieId) {
-      setMovies(
-        movies.map((m) =>
-          m.id === editingMovieId ? { ...m, ...movieData } : m,
-        ),
-      );
-    } else {
-      const id =
-        movies.length > 0 ? Math.max(...movies.map((m) => m.id)) + 1 : 1;
-      setMovies([...movies, { ...movieData, id }]);
+    try {
+      let response;
+      if (editingMovieId) {
+        response = await fetch(`${API_BASE_URL}/api/movies/${editingMovieId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(movieData),
+        });
+      } else {
+        response = await fetch(`${API_BASE_URL}/api/movies`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(movieData),
+        });
+      }
+
+      if (response.ok) {
+        // Refresh movies list
+        const fetchResponse = await fetch(`${API_BASE_URL}/api/movies`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        if (fetchResponse.ok) {
+          const data = await fetchResponse.json();
+          setMovies(data);
+        }
+      }
+    } catch (error) {
+      console.error('Error saving movie:', error);
     }
 
     closeModal();
@@ -151,7 +214,7 @@ const ManagerDashboard = () => {
   const closeModal = () => {
     setIsModalOpen(false);
     setEditingMovieId(null);
-    setNewMovie({ title: "", hall: "", seats: "", times: "" });
+    setNewMovie({ title: "", description: "", duration: "", rating: "", amount: "", posterUrl: "", director: "", language: "", status: "Active", genres: "" });
   };
 
   const filteredBookings = bookings.filter(
@@ -496,31 +559,20 @@ const ManagerDashboard = () => {
 
                   <div className="grid grid-cols-2 gap-4 mb-6">
                     <div className={`flex items-center gap-2 text-sm ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}>
-                      <MapPin size={16} /> {movie.hall}
+                      <Film size={16} /> {movie.duration}min
                     </div>
                     <div className={`flex items-center gap-2 text-sm ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}>
-                      <Users size={16} /> {movie.seats} Seats
+                      <DollarSign size={16} /> ${movie.amount}
                     </div>
                   </div>
 
                   <div className="space-y-2">
                     <p className={`text-xs font-bold uppercase tracking-widest ${isDarkMode ? "text-gray-400" : "text-gray-400"}`}>
-                      Showtimes
+                      Rating: {movie.rating}
                     </p>
-                    <div className="flex flex-wrap gap-2">
-                      {movie.times.map((t, i) => (
-                        <span
-                          key={i}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-bold border ${
-                            isDarkMode
-                              ? "bg-white/10 text-gray-300 border-white/10"
-                              : "bg-gray-100 text-gray-700 border-gray-200"
-                          }`}
-                        >
-                          {t}
-                        </span>
-                      ))}
-                    </div>
+                    <p className={`text-xs font-bold uppercase tracking-widest ${isDarkMode ? "text-gray-400" : "text-gray-400"}`}>
+                      Genres: {movie.genres ? movie.genres.join(', ') : 'N/A'}
+                    </p>
                   </div>
                 </div>
               ))}
@@ -599,10 +651,10 @@ const ManagerDashboard = () => {
       {/* Add/Edit Movie Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className={`w-full max-w-lg rounded-[32px] p-8 animate-in zoom-in duration-200 ${
+          <div className={`w-full max-w-2xl rounded-[32px] p-8 animate-in zoom-in duration-200 max-h-[90vh] overflow-y-auto ${
             isDarkMode ? "bg-[#1e1e1e]" : "bg-white"
           }`}>
-            <div className="flex justify-between items-center mb-6">
+            <div className="flex justify-between items-center mb-8">
               <h2 className={`text-2xl font-black ${isDarkMode ? "text-white" : "text-gray-800"}`}>
                 {editingMovieId ? "Edit Movie Details" : "New Movie Entry"}
               </h2>
@@ -616,21 +668,20 @@ const ManagerDashboard = () => {
               </button>
             </div>
 
-            <form onSubmit={handleSubmitMovie} className="space-y-5">
+            <form onSubmit={handleSubmitMovie} className="space-y-6">
               <div>
-                <label className={`block text-xs font-bold uppercase mb-2 ${isDarkMode ? "text-gray-400" : "text-gray-400"}`}>
-                  Movie Title
+                <label className={`block text-sm font-bold uppercase mb-3 ${isDarkMode ? "text-gray-400" : "text-gray-400"}`}>
+                  Movie Title *
                 </label>
                 <input
                   required
                   type="text"
                   placeholder="e.g. Inception"
-                  className={`w-full p-4 border rounded-2xl focus:outline-none focus:ring-2 ${
+                  className={`w-full p-4 border-2 rounded-2xl focus:outline-none transition-colors ${
                     isDarkMode
-                      ? "bg-white/10 border-white/10 text-white placeholder-gray-400"
-                      : "bg-gray-50 border-gray-100 text-gray-900 placeholder-gray-400"
+                      ? "bg-white/10 border-white/10 text-white placeholder-gray-400 focus:border-blue-500"
+                      : "bg-gray-50 border-gray-200 text-gray-900 placeholder-gray-400 focus:border-red-500"
                   }`}
-                  style={{ focusRingColor: BRAND_COLOR }}
                   value={newMovie.title}
                   onChange={(e) =>
                     setNewMovie({ ...newMovie, title: e.target.value })
@@ -638,75 +689,204 @@ const ManagerDashboard = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className={`block text-sm font-bold uppercase mb-3 ${isDarkMode ? "text-gray-400" : "text-gray-400"}`}>
+                  Description *
+                </label>
+                <textarea
+                  required
+                  rows="3"
+                  placeholder="Movie description"
+                  className={`w-full p-4 border-2 rounded-2xl focus:outline-none transition-colors resize-y ${
+                    isDarkMode
+                      ? "bg-white/10 border-white/10 text-white placeholder-gray-400 focus:border-blue-500"
+                      : "bg-gray-50 border-gray-200 text-gray-900 placeholder-gray-400 focus:border-red-500"
+                  }`}
+                  value={newMovie.description}
+                  onChange={(e) =>
+                    setNewMovie({ ...newMovie, description: e.target.value })
+                  }
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-5">
                 <div>
-                  <label className={`block text-xs font-bold uppercase mb-2 ${isDarkMode ? "text-gray-400" : "text-gray-400"}`}>
-                    Hall Name
-                  </label>
-                  <input
-                    required
-                    placeholder="Hall 1"
-                    className={`w-full p-4 border rounded-2xl focus:outline-none focus:ring-2 ${
-                      isDarkMode
-                        ? "bg-white/10 border-white/10 text-white placeholder-gray-400"
-                        : "bg-gray-50 border-gray-100 text-gray-900 placeholder-gray-400"
-                    }`}
-                    style={{ focusRingColor: BRAND_COLOR }}
-                    value={newMovie.hall}
-                    onChange={(e) =>
-                      setNewMovie({ ...newMovie, hall: e.target.value })
-                    }
-                  />
-                </div>
-                <div>
-                  <label className={`block text-xs font-bold uppercase mb-2 ${isDarkMode ? "text-gray-400" : "text-gray-400"}`}>
-                    Total Seats
+                  <label className={`block text-sm font-bold uppercase mb-3 ${isDarkMode ? "text-gray-400" : "text-gray-400"}`}>
+                    Duration (min) *
                   </label>
                   <input
                     required
                     type="number"
-                    placeholder="100"
-                    className={`w-full p-4 border rounded-2xl focus:outline-none focus:ring-2 ${
+                    placeholder="120"
+                    className={`w-full p-4 border-2 rounded-2xl focus:outline-none transition-colors ${
                       isDarkMode
-                        ? "bg-white/10 border-white/10 text-white placeholder-gray-400"
-                        : "bg-gray-50 border-gray-100 text-gray-900 placeholder-gray-400"
+                        ? "bg-white/10 border-white/10 text-white placeholder-gray-400 focus:border-blue-500"
+                        : "bg-gray-50 border-gray-200 text-gray-900 placeholder-gray-400 focus:border-red-500"
                     }`}
-                    style={{ focusRingColor: BRAND_COLOR }}
-                    value={newMovie.seats}
+                    value={newMovie.duration}
                     onChange={(e) =>
-                      setNewMovie({ ...newMovie, seats: e.target.value })
+                      setNewMovie({ ...newMovie, duration: e.target.value })
+                    }
+                  />
+                </div>
+                <div>
+                  <label className={`block text-sm font-bold uppercase mb-3 ${isDarkMode ? "text-gray-400" : "text-gray-400"}`}>
+                    Rating *
+                  </label>
+                  <input
+                    required
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    max="10"
+                    placeholder="8.5"
+                    className={`w-full p-4 border-2 rounded-2xl focus:outline-none transition-colors ${
+                      isDarkMode
+                        ? "bg-white/10 border-white/10 text-white placeholder-gray-400 focus:border-blue-500"
+                        : "bg-gray-50 border-gray-200 text-gray-900 placeholder-gray-400 focus:border-red-500"
+                    }`}
+                    value={newMovie.rating}
+                    onChange={(e) =>
+                      setNewMovie({ ...newMovie, rating: e.target.value })
+                    }
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-5">
+                <div>
+                  <label className={`block text-sm font-bold uppercase mb-3 ${isDarkMode ? "text-gray-400" : "text-gray-400"}`}>
+                    Price ($) *
+                  </label>
+                  <input
+                    required
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="15.00"
+                    className={`w-full p-4 border-2 rounded-2xl focus:outline-none transition-colors ${
+                      isDarkMode
+                        ? "bg-white/10 border-white/10 text-white placeholder-gray-400 focus:border-blue-500"
+                        : "bg-gray-50 border-gray-200 text-gray-900 placeholder-gray-400 focus:border-red-500"
+                    }`}
+                    value={newMovie.amount}
+                    onChange={(e) =>
+                      setNewMovie({ ...newMovie, amount: e.target.value })
+                    }
+                  />
+                </div>
+                <div>
+                  <label className={`block text-sm font-bold uppercase mb-3 ${isDarkMode ? "text-gray-400" : "text-gray-400"}`}>
+                    Status
+                  </label>
+                  <select
+                    value={newMovie.status}
+                    onChange={(e) => setNewMovie({ ...newMovie, status: e.target.value })}
+                    className={`w-full p-4 border-2 rounded-2xl focus:outline-none transition-colors cursor-pointer ${
+                      isDarkMode
+                        ? "bg-white/10 border-white/10 text-white focus:border-blue-500"
+                        : "bg-gray-50 border-gray-200 text-gray-900 focus:border-red-500"
+                    }`}
+                  >
+                    <option value="Active">Active</option>
+                    <option value="InActive">Inactive</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className={`block text-sm font-bold uppercase mb-3 ${isDarkMode ? "text-gray-400" : "text-gray-400"}`}>
+                  Poster URL
+                </label>
+                <input
+                  placeholder="https://example.com/poster.jpg"
+                  className={`w-full p-4 border-2 rounded-2xl focus:outline-none transition-colors ${
+                    isDarkMode
+                      ? "bg-white/10 border-white/10 text-white placeholder-gray-400 focus:border-blue-500"
+                      : "bg-gray-50 border-gray-200 text-gray-900 placeholder-gray-400 focus:border-red-500"
+                  }`}
+                  value={newMovie.posterUrl}
+                  onChange={(e) =>
+                    setNewMovie({ ...newMovie, posterUrl: e.target.value })
+                  }
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-5">
+                <div>
+                  <label className={`block text-sm font-bold uppercase mb-3 ${isDarkMode ? "text-gray-400" : "text-gray-400"}`}>
+                    Director
+                  </label>
+                  <input
+                    placeholder="Christopher Nolan"
+                    className={`w-full p-4 border-2 rounded-2xl focus:outline-none transition-colors ${
+                      isDarkMode
+                        ? "bg-white/10 border-white/10 text-white placeholder-gray-400 focus:border-blue-500"
+                        : "bg-gray-50 border-gray-200 text-gray-900 placeholder-gray-400 focus:border-red-500"
+                    }`}
+                    value={newMovie.director}
+                    onChange={(e) =>
+                      setNewMovie({ ...newMovie, director: e.target.value })
+                    }
+                  />
+                </div>
+                <div>
+                  <label className={`block text-sm font-bold uppercase mb-3 ${isDarkMode ? "text-gray-400" : "text-gray-400"}`}>
+                    Language
+                  </label>
+                  <input
+                    placeholder="English"
+                    className={`w-full p-4 border-2 rounded-2xl focus:outline-none transition-colors ${
+                      isDarkMode
+                        ? "bg-white/10 border-white/10 text-white placeholder-gray-400 focus:border-blue-500"
+                        : "bg-gray-50 border-gray-200 text-gray-900 placeholder-gray-400 focus:border-red-500"
+                    }`}
+                    value={newMovie.language}
+                    onChange={(e) =>
+                      setNewMovie({ ...newMovie, language: e.target.value })
                     }
                   />
                 </div>
               </div>
 
               <div>
-                <label className={`block text-xs font-bold uppercase mb-2 ${isDarkMode ? "text-gray-400" : "text-gray-400"}`}>
-                  Showtimes (comma separated)
+                <label className={`block text-sm font-bold uppercase mb-3 ${isDarkMode ? "text-gray-400" : "text-gray-400"}`}>
+                  Genres (comma separated)
                 </label>
                 <input
-                  required
-                  placeholder="2:00 PM, 6:00 PM"
-                  className={`w-full p-4 border rounded-2xl focus:outline-none focus:ring-2 ${
+                  placeholder="Action, Drama, Thriller"
+                  className={`w-full p-4 border-2 rounded-2xl focus:outline-none transition-colors ${
                     isDarkMode
-                      ? "bg-white/10 border-white/10 text-white placeholder-gray-400"
-                      : "bg-gray-50 border-gray-100 text-gray-900 placeholder-gray-400"
+                      ? "bg-white/10 border-white/10 text-white placeholder-gray-400 focus:border-blue-500"
+                      : "bg-gray-50 border-gray-200 text-gray-900 placeholder-gray-400 focus:border-red-500"
                   }`}
-                  style={{ focusRingColor: BRAND_COLOR }}
-                  value={newMovie.times}
+                  value={newMovie.genres}
                   onChange={(e) =>
-                    setNewMovie({ ...newMovie, times: e.target.value })
+                    setNewMovie({ ...newMovie, genres: e.target.value })
                   }
                 />
               </div>
 
-              <button
-                type="submit"
-                className="w-full text-white py-4 rounded-2xl font-black shadow-lg transition-all hover:brightness-110 active:scale-95 mt-4"
-                style={{ backgroundColor: BRAND_COLOR }}
-              >
-                {editingMovieId ? "Update Movie" : "Launch Movie"}
-              </button>
+              <div className="flex gap-4 pt-4 border-t border-gray-200 dark:border-white/10">
+                <button
+                  type="button"
+                  onClick={closeModal}
+                  className={`flex-1 py-4 rounded-2xl font-bold border-2 transition-all ${
+                    isDarkMode
+                      ? "border-white/10 text-white hover:bg-white/10"
+                      : "border-gray-200 text-gray-900 hover:bg-gray-100"
+                  }`}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-4 rounded-2xl font-black text-white shadow-lg transition-all hover:opacity-90 active:scale-95"
+                  style={{ backgroundColor: BRAND_COLOR }}
+                >
+                  {editingMovieId ? "Update Movie" : "Launch Movie"}
+                </button>
+              </div>
             </form>
           </div>
         </div>

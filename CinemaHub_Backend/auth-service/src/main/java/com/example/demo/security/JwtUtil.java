@@ -26,16 +26,20 @@ public class JwtUtil {
     // @PostConstruct
     // public void init(){
     //     this.key = Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
-    // }
     @PostConstruct
     public void init() {
         this.key = Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
     }
 
-    public String generateToken(String username){
+    public String generateToken(String username, String role){
         
-        return Jwts.builder().setSubject(username).setIssuedAt(new Date())
-               .setExpiration(new Date(System.currentTimeMillis() + jwtExpirationMs)).signWith(key).compact();
+        return Jwts.builder()
+               .setSubject(username)
+               .claim("role", role)
+               .setIssuedAt(new Date())
+               .setExpiration(new Date(System.currentTimeMillis() + jwtExpirationMs))
+               .signWith(key)
+               .compact();
     }
 
     public String getUserFromToken(String token){

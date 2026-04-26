@@ -1,25 +1,63 @@
-import React from "react";
-import { Link, useNavigate } from "react-router-dom";
+import React, { useState } from "react";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useTheme } from "../../context/ThemeContext";
 import { useBooking } from "../../context/BookingContext";
+import { useAuth } from "../../context/AuthContext";
 import Footer from "../../Components/Footer/Footer";
 import { FaCreditCard, FaArrowLeft } from "react-icons/fa";
+
+const API_BASE_URL = "http://localhost:8080";
 
 const Payment = () => {
   const { isDarkMode, colors } = useTheme();
   const { bookingData } = useBooking();
+  const { token, user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const { bookingId, amount } = location.state || {};
 
-  const [selectedPayment, setSelectedPayment] = React.useState("card");
-  const [cardNumber, setCardNumber] = React.useState("");
-  const [cardName, setCardName] = React.useState("");
-  const [expiryDate, setExpiryDate] = React.useState("");
-  const [cvv, setCvv] = React.useState("");
+  const [selectedPayment, setSelectedPayment] = useState("card");
+  const [cardNumber, setCardNumber] = useState("");
+  const [cardName, setCardName] = useState("");
+  const [expiryDate, setExpiryDate] = useState("");
+  const [cvv, setCvv] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const handlePayment = (e) => {
+  const handlePayment = async (e) => {
     e.preventDefault();
-    // Handle payment logic here
-    navigate("/booking-success");
+    setLoading(true);
+    setError("");
+
+    try {
+      const paymentRequest = {
+        bookingId: bookingId || 1,
+        userId: user?.id || 1,
+        amount: amount || calculateTotal(),
+        paymentMethod: selectedPayment === "card" ? "CREDIT_CARD" : "CASH",
+      };
+
+      const response = await fetch(`${API_BASE_URL}/api/payments`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(paymentRequest),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || "Payment failed");
+      }
+
+      const payment = await response.json();
+      navigate("/confirmation", { state: { paymentId: payment.id, bookingId } });
+    } catch (err) {
+      setError(err.message || "Payment failed. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const calculateTotal = () => {
@@ -70,6 +108,12 @@ const Payment = () => {
 
                 
               </div>
+
+              {error && (
+                <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+                  {error}
+                </div>
+              )}
 
               {/* Card Details Form */}
               {selectedPayment === "card" && (
@@ -150,6 +194,7 @@ const Payment = () => {
 
                   <button
                     type="submit"
+                    disabled={loading}
                     className="w-full py-4 rounded-xl text-white font-semibold transition-all duration-300 transform hover:scale-105"
                     style={{ backgroundColor: colors.primary }}
                     onMouseEnter={(e) => {
@@ -163,7 +208,7 @@ const Payment = () => {
                       e.currentTarget.style.border = "none";
                     }}
                   >
-                    Pay ${calculateTotal().toFixed(2)}
+                    {loading ? "Processing..." : `Pay $${(amount || calculateTotal()).toFixed(2)}`}
                   </button>
                 </form>
               )}
@@ -171,6 +216,7 @@ const Payment = () => {
               {selectedPayment !== "card" && (
                 <button
                   onClick={handlePayment}
+                  disabled={loading}
                   className="w-full py-4 rounded-xl text-white font-semibold transition-all duration-300 transform hover:scale-105"
                   style={{ backgroundColor: colors.primary }}
                   onMouseEnter={(e) => {
@@ -184,7 +230,7 @@ const Payment = () => {
                     e.currentTarget.style.border = "none";
                   }}
                 >
-                  Pay ${calculateTotal().toFixed(2)}
+                  {loading ? "Processing..." : `Pay $${(amount || calculateTotal()).toFixed(2)}`}
                 </button>
               )}
 

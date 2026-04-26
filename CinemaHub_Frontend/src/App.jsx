@@ -31,8 +31,6 @@ const UserProfile = lazy(() => import("./Pages/UserProfile/UserProfile"));
 const Payment = lazy(() => import("./Pages/Payment/Payment"));
 const Confirmation = lazy(() => import("./Pages/Confirmation/Confirmation"));
 
-
-
 const DashboardLayout = lazy(() => import("./Layouts/DashboardLayout"));
 const AdminLayout = lazy(() => import("./Layouts/AdminLayout"));
 const ManagerLayout = lazy(() => import("./Layouts/ManagerLayout"));
@@ -66,7 +64,9 @@ function App() {
 
         <Route path="/login" element={<Login />} />
         <Route path="/sign-up" element={<SignUp />} />
-        <Route path="/user-profile" element={<UserProfile />} />
+        <Route element={<ProtectedRoute />}>
+          <Route path="/user-profile" element={<UserProfile />} />
+        </Route>
         <Route element={<PublicLayout />}>
           <Route path="/home" element={<CinemaHome />} />
           <Route path="/movies" element={<Movies />} />

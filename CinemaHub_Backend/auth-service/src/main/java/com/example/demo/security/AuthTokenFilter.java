@@ -40,10 +40,16 @@ public class AuthTokenFilter extends OncePerRequestFilter {
                             // 🚪 PUBLIC ROUTES BYPASS
                             if (path.startsWith("/api/v1/auth")
                                 || path.startsWith("/api/v1/welcome")
-                                || path.startsWith("/api/v1/hello")) {
+                                || path.startsWith("/api/v1/hello")
+                                || path.equals("/api/auth/register")
+                                || path.equals("/api/auth/login")
+                                || path.equals("/api/auth/logout")) {
                                 filterChain.doFilter(request, response);
                                 return;
                             }
+
+                            // 🚪 USER ROUTES (protected by Spring Security, not bypassed)
+                            // These routes will be validated by WebSecurityConfig
 
                             try {
                                 String jwt = parseJwt(request);

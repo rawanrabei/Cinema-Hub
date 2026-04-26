@@ -1,16 +1,20 @@
-import React from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FaCheckCircle } from "react-icons/fa";
 import { useTheme } from "../../context/ThemeContext";
 import { useBooking } from "../../context/BookingContext";
 import { useAuth } from "../../context/AuthContext";
 
+const API_BASE_URL = "http://localhost:8080";
+
 const Booking = () => {
   const { isDarkMode, colors } = useTheme();
   const { ticketData, snacksData, getSnacksTotal, getGrandTotal } =
     useBooking();
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, token } = useAuth();
   const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const bookingData = ticketData || {
     movie: { title: "N/A" },
@@ -26,6 +30,47 @@ const Booking = () => {
   const grandTotal = getGrandTotal();
 
   const steps = ["Showtime", "Cinema", "Seats", "Confirm"];
+
+  const handleConfirmBooking = async () => {
+    if (!isAuthenticated || !user) {
+      navigate("/login", {
+        state: { from: { pathname: "/booking" } },
+      });
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+
+    try {
+      const bookingRequest = {
+        userId: user.id,
+        showtimeId: bookingData.showtime?.id || 1, // Default to 1 if not available
+        seatIds: bookingData.seats || [1, 2, 3], // Default seats if not available
+      };
+
+      const response = await fetch(`${API_BASE_URL}/api/bookings`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(bookingRequest),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || "Booking failed");
+      }
+
+      const booking = await response.json();
+      navigate("/payment", { state: { bookingId: booking.bookingId, amount: grandTotal } });
+    } catch (err) {
+      setError(err.message || "Booking failed. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div
@@ -269,19 +314,16 @@ const Booking = () => {
               </div>
             </div>
 
+            {error && (
+              <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+                {error}
+              </div>
+            )}
+
             <div className="flex justify-center">
               <button
-                onClick={() => {
-                  if (!isAuthenticated || !user) {
-                    navigate("/login", {
-                      state: { from: { pathname: "/booking" } },
-                    });
-                  } else {
-                    alert(
-                      "Booking confirmed! Your tickets have been sent to your email."
-                    );
-                  }
-                }}
+                onClick={handleConfirmBooking}
+                disabled={loading}
                 className={`w-full px-6 py-4 rounded-xl text-white font-semibold transition-all ${
                   isDarkMode ? "bg-blue-600 hover:bg-blue-700" : ""
                 }`}
@@ -309,7 +351,7 @@ const Booking = () => {
                   }
                 }}
               >
-                Confirm Booking
+                {loading ? "Processing..." : "Confirm Booking"}
               </button>
             </div>
           </div>

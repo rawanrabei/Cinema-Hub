@@ -2,6 +2,7 @@ package com.cinemahub.payment_service.controller;
 
 import com.cinemahub.payment_service.dto.PaymentRequestDTO;
 import com.cinemahub.payment_service.dto.PaymentResponseDTO;
+import com.cinemahub.payment_service.producer.PaymentProducer;
 import com.cinemahub.payment_service.service.PaymentService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -15,14 +16,25 @@ import java.util.List;
 public class PaymentController {
 
     private final PaymentService paymentService;
+    private final PaymentProducer paymentProducer;
 
-    public PaymentController(PaymentService paymentService) {
+    public PaymentController(PaymentService paymentService, PaymentProducer paymentProducer) {
         this.paymentService = paymentService;
+        this.paymentProducer = paymentProducer;
     }
 
     @PostMapping
     public ResponseEntity<PaymentResponseDTO> processPayment(@Valid @RequestBody PaymentRequestDTO requestDTO) {
-        return new ResponseEntity<>(paymentService.processPayment(requestDTO), HttpStatus.CREATED);
+        PaymentResponseDTO payment = paymentService.processPayment(requestDTO);
+
+        // Send payment event based on status
+        if (payment.getStatus().toString().equals("SUCCESS")) {
+            paymentProducer.sendPaymentCompletedEvent(payment);
+        } else if (payment.getStatus().toString().equals("FAILED")) {
+            paymentProducer.sendPaymentFailedEvent(payment);
+        }
+
+        return new ResponseEntity<>(payment, HttpStatus.CREATED);
     }
 
     @GetMapping("/{id}")

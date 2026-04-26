@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.booking.demo.dto.BookingRequest;
 import com.booking.demo.dto.BookingResponse;
+import com.booking.demo.producer.BookingProducer;
 import com.booking.demo.service.BookingService;
 
 @RestController
@@ -19,18 +20,22 @@ import com.booking.demo.service.BookingService;
 public class BookingController {
 
     private final BookingService service;
+    private final BookingProducer bookingProducer;
 
-    public BookingController(BookingService service) {
+    public BookingController(BookingService service, BookingProducer bookingProducer) {
         this.service = service;
+        this.bookingProducer = bookingProducer;
     }
 
     @PostMapping
     public BookingResponse create(@RequestBody BookingRequest req) {
-        return service.createBooking(
+        BookingResponse booking = service.createBooking(
                 req.getUserId(),
                 req.getShowtimeId(),
                 req.getSeatIds()
         );
+        bookingProducer.sendBookingCreatedEvent(booking);
+        return booking;
     }
     @PostMapping("/generate-seats/{showtimeId}")
     public String generateSeats(@PathVariable Long showtimeId) {
@@ -51,6 +56,7 @@ public class BookingController {
     @DeleteMapping("/{id}")
     public String cancel(@PathVariable Long id) {
         service.cancelBooking(id);
+        bookingProducer.sendBookingCancelledEvent(id);
         return "Booking cancelled successfully";
     }
 }

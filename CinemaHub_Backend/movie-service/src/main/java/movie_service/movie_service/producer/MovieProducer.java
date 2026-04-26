@@ -14,13 +14,17 @@ public class MovieProducer {
 
     private static final Logger logger = LoggerFactory.getLogger(MovieProducer.class);
 
-    @Autowired
+    @Autowired(required = false)
     private KafkaTemplate<String, String> kafkaTemplate;
 
     @Autowired
     private ObjectMapper objectMapper;
 
     public void sendMovieAddedEvent(Object movie) {
+        if (kafkaTemplate == null) {
+            logger.warn("Kafka is disabled, skipping movie added event");
+            return;
+        }
         try {
             String message = objectMapper.writeValueAsString(movie);
             kafkaTemplate.send("movie-added", message);
@@ -31,6 +35,10 @@ public class MovieProducer {
     }
 
     public void sendMovieUpdatedEvent(Object movie) {
+        if (kafkaTemplate == null) {
+            logger.warn("Kafka is disabled, skipping movie updated event");
+            return;
+        }
         try {
             String message = objectMapper.writeValueAsString(movie);
             kafkaTemplate.send("movie-updated", message);
@@ -41,6 +49,10 @@ public class MovieProducer {
     }
 
     public void sendMovieDeletedEvent(Long movieId) {
+        if (kafkaTemplate == null) {
+            logger.warn("Kafka is disabled, skipping movie deleted event");
+            return;
+        }
         try {
             String message = objectMapper.writeValueAsString(movieId);
             kafkaTemplate.send("movie-deleted", message);

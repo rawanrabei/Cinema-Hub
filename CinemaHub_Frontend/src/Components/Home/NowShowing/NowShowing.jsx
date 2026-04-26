@@ -1,45 +1,48 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { FaStar, FaClock } from "react-icons/fa";
 import { useTheme } from "../../../context/ThemeContext";
+import { useAuth } from "../../../context/AuthContext";
+
+const API_BASE_URL = "http://localhost:8080";
 
 const NowShowing = () => {
   const { isDarkMode, colors } = useTheme();
+  const { token } = useAuth();
   const navigate = useNavigate();
-  const movies = [
-    {
-      id: 4,
-      title: "CROWN",
-      genre: "Action, Thriller",
-      duration: "152 min",
-      rating: 9.0,
-      image: "/moveis/m4.jpg",
-    },
-    {
-      id: 5,
-      title: "BEAKY BLINDERS",
-      genre: "Sci-Fi, Thriller",
-      duration: "148 min",
-      rating: 8.8,
-      image: "/moveis/m5.jpg",
-    },
-    {
-      id: 23,
-      title: "THE IDEA OF YOU",
-      genre: "Sci-Fi, Drama",
-      duration: "169 min",
-      rating: 8.6,
-      image: "/moveis/m23.jpg",
-    },
-    {
-      id: 19,
-      title: "ALADDIN",
-      genre: "Action, Sci-Fi",
-      duration: "136 min",
-      rating: 8.7,
-      image: "/moveis/m19.jpg",
-    },
-  ];
+  const [movies, setMovies] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchMovies = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/movies`, {
+          headers: {
+            ...(token && { Authorization: `Bearer ${token}` }),
+          },
+        });
+        if (response.ok) {
+          const data = await response.json();
+          // Transform API data to match frontend structure
+          const transformedMovies = data.slice(0, 4).map((movie) => ({
+            id: movie.id,
+            title: movie.title,
+            genre: movie.genres ? movie.genres.join(", ") : "Action",
+            duration: `${movie.duration} min`,
+            rating: movie.rating || 8.5,
+            image: movie.posterUrl || "/moveis/m4.jpg",
+          }));
+          setMovies(transformedMovies);
+        }
+      } catch (error) {
+        console.error("Error fetching movies:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchMovies();
+  }, [token]);
 
   return (
     <section

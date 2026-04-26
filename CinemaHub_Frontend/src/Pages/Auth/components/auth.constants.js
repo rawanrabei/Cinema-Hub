@@ -11,6 +11,10 @@ export const ROLE_CONFIG = {
     label: "Member",
     loginPath: "/home",
   },
+  user: {
+    label: "User",
+    loginPath: "/home",
+  },
 };
 
 export const FALLBACK_AUTH_PATH = "/home";

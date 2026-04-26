@@ -8,37 +8,11 @@ import {
 } from "react";
 
 const AuthContext = createContext(null);
-const ROLES = ["admin", "manager", "member"];
-const DEFAULT_ROLE = "member";
-const USERS_KEY = "cinemaHub.auth.users";
-const SESSION_KEY = "cinemaHub.auth.session";
-
-const DEMO_USERS = [
-  {
-    id: "demo-admin",
-    name: "Cinema Admin",
-    email: "admin@cinemahub.com",
-    password: "Admin@123",
-    role: "admin",
-  },
-  {
-    id: "demo-manager",
-    name: "Cinema Manager",
-    email: "manager@cinemahub.com",
-    password: "Manager@123",
-    role: "manager",
-  },
-  {
-    id: "demo-user",
-    name: "Sara Ibrahim",
-    email: "user@cinemahub.com",
-    password: "User@123",
-    role: "member",
-  },
-];
-
-const normalizeEmail = (email) => email.trim().toLowerCase();
-const safeUser = ({ password, ...user }) => user;
+const ROLES = ["ADMIN", "MANAGER", "USER"];
+const DEFAULT_ROLE = "USER";
+const TOKEN_KEY = "cinemaHub.auth.token";
+const USER_KEY = "cinemaHub.auth.user";
+const API_BASE_URL = "http://localhost:8080";
 
 const parseStorage = (key, fallback) => {
   try {
@@ -54,31 +28,29 @@ const saveStorage = (key, value) => {
 };
 
 export function AuthProvider({ children }) {
-  const [users, setUsers] = useState(() => {
-    // Clear old localStorage and use fresh DEMO_USERS
-    localStorage.removeItem(USERS_KEY);
-    localStorage.removeItem(SESSION_KEY);
-    return DEMO_USERS;
-  });
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(() => parseStorage(USER_KEY, null));
+  const [token, setToken] = useState(() => localStorage.getItem(TOKEN_KEY));
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    saveStorage(USERS_KEY, users);
-  }, [users]);
-
-  useEffect(() => {
     if (user) {
-      saveStorage(SESSION_KEY, user);
+      saveStorage(USER_KEY, user);
     } else {
-      localStorage.removeItem(SESSION_KEY);
+      localStorage.removeItem(USER_KEY);
     }
   }, [user]);
+
+  useEffect(() => {
+    if (token) {
+      localStorage.setItem(TOKEN_KEY, token);
+    } else {
+      localStorage.removeItem(TOKEN_KEY);
+    }
+  }, [token]);
 
   const withAuthLoading = useCallback(async (action) => {
     setIsLoading(true);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 350));
       return await action();
     } finally {
       setIsLoading(false);
@@ -86,71 +58,126 @@ export function AuthProvider({ children }) {
   }, []);
 
   const login = useCallback(
-    async ({ email, password, role }) => {
+    async ({ email, password }) => {
       return withAuthLoading(async () => {
-        const normalizedEmail = normalizeEmail(email || "");
-        const normalizedRole = role || null;
-        const foundUser = users.find((item) => item.email === normalizedEmail);
+        const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ email, password }),
+        });
 
-        if (!foundUser || foundUser.password !== password) {
-          throw new Error("Invalid email or password.");
+        if (!response.ok) {
+          const error = await response.text();
+          throw new Error(error || "Login failed.");
         }
 
-        if (normalizedRole && foundUser.role !== normalizedRole) {
-          throw new Error("This account does not belong to the selected role.");
-        }
+        const jwtToken = await response.text();
+        
+        // Decode JWT to get user info (simple implementation)
+        const base64Url = jwtToken.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+          return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join(''));
+        
+        const decoded = JSON.parse(jsonPayload);
+        
+        const userData = {
+          id: decoded.userId || decoded.sub,
+          email: decoded.sub,
+          role: decoded.role ? decoded.role.toLowerCase() : DEFAULT_ROLE.toLowerCase(),
+          name: decoded.sub.split('@')[0],
+        };
 
-        const nextUser = safeUser(foundUser);
-        setUser(nextUser);
-        return nextUser;
+        setToken(jwtToken);
+        setUser(userData);
+        return userData;
       });
     },
-    [users, withAuthLoading],
+    [withAuthLoading],
   );
 
   const signup = useCallback(
-    async ({ name, email, password }) => {
+    async ({ name, email, password, role }) => {
       return withAuthLoading(async () => {
-        const normalizedEmail = normalizeEmail(email || "");
-        const role = DEFAULT_ROLE;
+        const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ 
+            username: name,
+            email, 
+            password,
+            role: role ? role.toUpperCase() : DEFAULT_ROLE 
+          }),
+        });
 
-        if (!normalizedEmail.includes("@")) {
-          throw new Error("Please enter a valid email.");
+        if (!response.ok) {
+          const error = await response.text();
+          throw new Error(error || "Registration failed.");
         }
 
-        if (password.length < 8) {
-          throw new Error("Password must be at least 8 characters.");
-        }
-
-        if (!ROLES.includes(role)) {
-          throw new Error("Invalid account role.");
-        }
-
-        const alreadyExists = users.some((item) => item.email === normalizedEmail);
-        if (alreadyExists) {
-          throw new Error("Email is already registered.");
-        }
-
-        const createdUser = {
-          id: `user-${Date.now()}`,
-          name: name.trim(),
-          email: normalizedEmail,
-          password,
-          role,
-        };
-
-        setUsers((prev) => [...prev, createdUser]);
-        const nextUser = safeUser(createdUser);
-        setUser(nextUser);
-        return nextUser;
+        const result = await response.text();
+        
+        // Auto-login after registration
+        return login({ email, password });
       });
     },
-    [users, withAuthLoading],
+    [withAuthLoading, login],
   );
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
+    // Call backend logout endpoint
+    if (token) {
+      try {
+        await fetch(`${API_BASE_URL}/api/auth/logout`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`,
+          },
+        });
+      } catch (error) {
+        console.error("Logout error:", error);
+      }
+    }
+    setToken(null);
     setUser(null);
-  }, []);
+  }, [token]);
+
+  const fetchProfile = useCallback(async () => {
+    if (!token) return null;
+    
+    return withAuthLoading(async () => {
+      const response = await fetch(`${API_BASE_URL}/api/auth/profile`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        console.error("Failed to fetch profile:", response.status);
+        return null;
+      }
+
+      const profileData = await response.json();
+      
+      const userData = {
+        id: profileData.id,
+        email: profileData.email,
+        role: profileData.role ? profileData.role.toLowerCase() : DEFAULT_ROLE.toLowerCase(),
+        name: profileData.username,
+      };
+
+      setUser(userData);
+      return userData;
+    });
+  }, [token, withAuthLoading]);
 
   const hasRole = useCallback(
     (allowedRoles = []) => {
@@ -164,17 +191,18 @@ export function AuthProvider({ children }) {
   const value = useMemo(
     () => ({
       user,
-      users,
       isAuthenticated: Boolean(user),
       isLoading,
-      roles: ROLES,
-      defaultRole: DEFAULT_ROLE,
+      roles: ROLES.map(r => r.toLowerCase()),
+      defaultRole: DEFAULT_ROLE.toLowerCase(),
       login,
       signup,
       logout,
       hasRole,
+      token,
+      fetchProfile,
     }),
-    [user, users, isLoading, login, signup, logout, hasRole],
+    [user, isLoading, login, signup, logout, hasRole, token, fetchProfile],
   );
 
   return (

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   FaCamera,
   FaTicketAlt,
@@ -30,7 +30,7 @@ const preferences = [
 
 const UserProfile = () => {
   const { isDarkMode, colors } = useTheme();
-  const { user, logout } = useAuth();
+  const { user, logout, fetchProfile } = useAuth();
   const navigate = useNavigate();
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
   const [isMembershipOpen, setIsMembershipOpen] = useState(false);
@@ -79,6 +79,27 @@ const UserProfile = () => {
       status: "confirmed",
     },
   ]);
+
+  // Fetch profile data from backend on mount
+  useEffect(() => {
+    if (user) {
+      fetchProfile();
+    }
+  }, []);
+
+  // Update displayUser when user data changes
+  useEffect(() => {
+    if (user) {
+      setDisplayUser({
+        name: user.name || "User",
+        email: user.email || "user@example.com",
+      });
+      setProfileData({
+        name: user.name || "",
+        email: user.email || "",
+      });
+    }
+  }, [user]);
 
   const surfaceCard = isDarkMode
     ? "bg-gray-900 border border-white/10 text-white"

@@ -1,1 +1,2 @@
 com\cinemahub\gateway\ApiGatewayApplication.class
+com\cinemahub\gateway\config\CorsConfig.class

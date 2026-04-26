@@ -2,9 +2,11 @@ import React, { useState, useEffect } from 'react';
 import {
   DollarSign, Ticket, Film, Users,
   Search, Plus, Eye, Pencil, Trash2,
-  TrendingUp, CalendarDays, Clapperboard, Menu, X, X as CloseIcon
+  TrendingUp, CalendarDays, Clapperboard, Menu, X
 } from 'lucide-react';
+const CloseIcon = X;
 import { useTheme } from '../../context/ThemeContext';
+import { useAuth } from '../../context/AuthContext';
 
 // ── Data ───────────────────────────────────────────────
 const getStats = (isDarkMode) => [
@@ -14,17 +16,15 @@ const getStats = (isDarkMode) => [
   { iconEl: <Users      size={22} color="#a855f7" />, label: 'Total Customers', value: '5,678',    badge: '+15.3%', badgeColor: '#f3e8ff', badgeText: '#7e22ce' },
 ];
 
-const initialMovies = [
-  { title: 'Shadow Operative', genre: 'Action',  revenue: '$45,230', status: 'active' },
-  { title: 'The Haunting',     genre: 'Horror',  revenue: '$38,120', status: 'active' },
-  { title: 'Eternal Love',     genre: 'Romance', revenue: '$42,080', status: 'active' },
-];
+const API_BASE_URL = 'http://localhost:8080';
 
 const users = [
   { name: 'John Doe',    email: 'john@example.com', bookings: 12, role: 'customer' },
   { name: 'Jane Smith',  email: 'jane@example.com', bookings: 8,  role: 'customer' },
   { name: 'Bob Johnson', email: 'bob@example.com',  bookings: 0,  role: 'employee' },
 ];
+
+const initialMovies = [];
 
 const bookings = [
   { movie: 'Shadow Operative', customer: 'John Doe',  date: '2025-10-15', amount: '$36', status: 'confirmed' },
@@ -118,17 +118,17 @@ const MoviesTab = ({ darkMode, movies, onAddMovie, onEditMovie, onDeleteMovie, o
         </button>
       </div>
       <SearchBar value={search} onChange={e => setSearch(e.target.value)} placeholder="Search movies..." darkMode={darkMode} />
-      {filtered.map((m, i) => (
-        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 14px', borderRadius: '10px', marginBottom: '8px', border: `1px solid ${darkMode ? '#333' : '#f0e0e0'}`, flexWrap: 'wrap', gap: '8px' }}>
+      {filtered.map((m) => (
+        <div key={m.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 14px', borderRadius: '10px', marginBottom: '8px', border: `1px solid ${darkMode ? '#333' : '#f0e0e0'}`, flexWrap: 'wrap', gap: '8px' }}>
           <div>
             <p style={{ margin: 0, fontWeight: '600', fontSize: '14px', color: darkMode ? '#fff' : '#111' }}>{m.title}</p>
-            <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#aaa' }}>Genre: {m.genre} &nbsp; Revenue: {m.revenue}</p>
+            <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#aaa' }}>Duration: {m.duration}min &nbsp; Rating: {m.rating} &nbsp; Price: ${m.amount}</p>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span style={{ fontSize: '11px', fontWeight: '600', padding: '3px 10px', borderRadius: '99px', backgroundColor: m.status === 'active' ? (darkMode ? '#3b82f6' : '#FF0800') : '#f5f5f5', color: m.status === 'active' ? '#fff' : '#888' }}>{m.status}</span>
+            <span style={{ fontSize: '11px', fontWeight: '600', padding: '3px 10px', borderRadius: '99px', backgroundColor: m.status === 'Active' ? (darkMode ? '#3b82f6' : '#FF0800') : '#f5f5f5', color: m.status === 'Active' ? '#fff' : '#888' }}>{m.status}</span>
             <Eye size={15} color="#aaa" style={{ cursor: 'pointer' }} onClick={() => onViewMovie(m)} />
             <Pencil size={15} color="#aaa" style={{ cursor: 'pointer' }} onClick={() => onEditMovie(m)} />
-            <Trash2 size={15} color="#aaa" style={{ cursor: 'pointer' }} onClick={() => onDeleteMovie(i)} />
+            <Trash2 size={15} color="#aaa" style={{ cursor: 'pointer' }} onClick={() => onDeleteMovie(m.id)} />
           </div>
         </div>
       ))}
@@ -211,25 +211,43 @@ const BookingsTab = ({ darkMode, bookings, onAddBooking, onEditBooking, onDelete
 const MovieModal = ({ darkMode, isOpen, onClose, onSubmit, movie, isEdit }) => {
   const [formData, setFormData] = useState({
     title: movie?.title || '',
-    genre: movie?.genre || '',
-    revenue: movie?.revenue || '',
-    status: movie?.status || 'active'
+    description: movie?.description || '',
+    duration: movie?.duration || '',
+    rating: movie?.rating || '',
+    amount: movie?.amount || '',
+    posterUrl: movie?.posterUrl || '',
+    director: movie?.director || '',
+    language: movie?.language || '',
+    status: movie?.status || 'Active',
+    genres: movie?.genres ? movie.genres.join(', ') : '',
   });
 
   useEffect(() => {
     if (movie) {
       setFormData({
         title: movie.title,
-        genre: movie.genre,
-        revenue: movie.revenue,
-        status: movie.status
+        description: movie.description,
+        duration: movie.duration,
+        rating: movie.rating,
+        amount: movie.amount,
+        posterUrl: movie.posterUrl,
+        director: movie.director,
+        language: movie.language,
+        status: movie.status,
+        genres: movie.genres ? movie.genres.join(', ') : '',
       });
     } else {
       setFormData({
         title: '',
-        genre: '',
-        revenue: '',
-        status: 'active'
+        description: '',
+        duration: '',
+        rating: '',
+        amount: '',
+        posterUrl: '',
+        director: '',
+        language: '',
+        status: 'Active',
+        genres: '',
       });
     }
   }, [movie]);
@@ -242,72 +260,178 @@ const MovieModal = ({ darkMode, isOpen, onClose, onSubmit, movie, isEdit }) => {
   };
 
   return (
-    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-      <div style={{ backgroundColor: darkMode ? '#1e1e1e' : '#fff', borderRadius: '16px', padding: '24px', width: '90%', maxWidth: '400px', border: `1px solid ${darkMode ? '#333' : '#f0e0e0'}` }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-          <h2 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: darkMode ? '#fff' : '#111' }}>
+    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
+      <div style={{ backgroundColor: darkMode ? '#1e1e1e' : '#fff', borderRadius: '16px', padding: '32px', width: '100%', maxWidth: '600px', maxHeight: '90vh', overflowY: 'auto', border: `1px solid ${darkMode ? '#333' : '#f0e0e0'}` }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+          <h2 style={{ margin: 0, fontSize: '22px', fontWeight: '700', color: darkMode ? '#fff' : '#111' }}>
             {isEdit ? 'Edit Movie' : 'Add New Movie'}
           </h2>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}>
-            <CloseIcon size={20} color={darkMode ? '#fff' : '#111'} />
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '8px', borderRadius: '8px', transition: 'background 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.background = darkMode ? '#333' : '#f0f0f0'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
+            <CloseIcon size={24} color={darkMode ? '#fff' : '#111'} />
           </button>
         </div>
         <form onSubmit={handleSubmit}>
-          <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: darkMode ? '#fff' : '#111', marginBottom: '6px' }}>Title</label>
+          <div style={{ marginBottom: '20px' }}>
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: darkMode ? '#fff' : '#111', marginBottom: '8px' }}>Movie Title *</label>
             <input
               type="text"
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
               required
-              style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: `1px solid ${darkMode ? '#333' : '#f0e0e0'}`, backgroundColor: darkMode ? '#2a2a2a' : '#fff', color: darkMode ? '#fff' : '#111', fontSize: '13px', outline: 'none' }}
+              placeholder="e.g. Inception"
+              style={{ width: '100%', padding: '12px 16px', borderRadius: '10px', border: `2px solid ${darkMode ? '#333' : '#e0e0e0'}`, backgroundColor: darkMode ? '#2a2a2a' : '#fff', color: darkMode ? '#fff' : '#111', fontSize: '14px', outline: 'none', transition: 'border-color 0.2s' }}
+              onFocus={(e) => e.currentTarget.style.borderColor = darkMode ? '#3b82f6' : '#FF0800'}
+              onBlur={(e) => e.currentTarget.style.borderColor = darkMode ? '#333' : '#e0e0e0'}
             />
           </div>
-          <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: darkMode ? '#fff' : '#111', marginBottom: '6px' }}>Genre</label>
-            <input
-              type="text"
-              value={formData.genre}
-              onChange={(e) => setFormData({ ...formData, genre: e.target.value })}
-              required
-              style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: `1px solid ${darkMode ? '#333' : '#f0e0e0'}`, backgroundColor: darkMode ? '#2a2a2a' : '#fff', color: darkMode ? '#fff' : '#111', fontSize: '13px', outline: 'none' }}
-            />
-          </div>
-          <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: darkMode ? '#fff' : '#111', marginBottom: '6px' }}>Revenue</label>
-            <input
-              type="text"
-              value={formData.revenue}
-              onChange={(e) => setFormData({ ...formData, revenue: e.target.value })}
-              required
-              placeholder="$0"
-              style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: `1px solid ${darkMode ? '#333' : '#f0e0e0'}`, backgroundColor: darkMode ? '#2a2a2a' : '#fff', color: darkMode ? '#fff' : '#111', fontSize: '13px', outline: 'none' }}
-            />
-          </div>
+
           <div style={{ marginBottom: '20px' }}>
-            <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: darkMode ? '#fff' : '#111', marginBottom: '6px' }}>Status</label>
-            <select
-              value={formData.status}
-              onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-              style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: `1px solid ${darkMode ? '#333' : '#f0e0e0'}`, backgroundColor: darkMode ? '#2a2a2a' : '#fff', color: darkMode ? '#fff' : '#111', fontSize: '13px', outline: 'none' }}
-            >
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-            </select>
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: darkMode ? '#fff' : '#111', marginBottom: '8px' }}>Description *</label>
+            <textarea
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              required
+              rows="3"
+              placeholder="Brief movie description"
+              style={{ width: '100%', padding: '12px 16px', borderRadius: '10px', border: `2px solid ${darkMode ? '#333' : '#e0e0e0'}`, backgroundColor: darkMode ? '#2a2a2a' : '#fff', color: darkMode ? '#fff' : '#111', fontSize: '14px', outline: 'none', resize: 'vertical', transition: 'border-color 0.2s' }}
+              onFocus={(e) => e.currentTarget.style.borderColor = darkMode ? '#3b82f6' : '#FF0800'}
+              onBlur={(e) => e.currentTarget.style.borderColor = darkMode ? '#333' : '#e0e0e0'}
+            />
           </div>
-          <div style={{ display: 'flex', gap: '10px' }}>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: darkMode ? '#fff' : '#111', marginBottom: '8px' }}>Duration (min) *</label>
+              <input
+                type="number"
+                value={formData.duration}
+                onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
+                required
+                placeholder="120"
+                style={{ width: '100%', padding: '12px 16px', borderRadius: '10px', border: `2px solid ${darkMode ? '#333' : '#e0e0e0'}`, backgroundColor: darkMode ? '#2a2a2a' : '#fff', color: darkMode ? '#fff' : '#111', fontSize: '14px', outline: 'none', transition: 'border-color 0.2s' }}
+                onFocus={(e) => e.currentTarget.style.borderColor = darkMode ? '#3b82f6' : '#FF0800'}
+                onBlur={(e) => e.currentTarget.style.borderColor = darkMode ? '#333' : '#e0e0e0'}
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: darkMode ? '#fff' : '#111', marginBottom: '8px' }}>Rating *</label>
+              <input
+                type="number"
+                step="0.1"
+                min="0"
+                max="10"
+                value={formData.rating}
+                onChange={(e) => setFormData({ ...formData, rating: e.target.value })}
+                required
+                placeholder="8.5"
+                style={{ width: '100%', padding: '12px 16px', borderRadius: '10px', border: `2px solid ${darkMode ? '#333' : '#e0e0e0'}`, backgroundColor: darkMode ? '#2a2a2a' : '#fff', color: darkMode ? '#fff' : '#111', fontSize: '14px', outline: 'none', transition: 'border-color 0.2s' }}
+                onFocus={(e) => e.currentTarget.style.borderColor = darkMode ? '#3b82f6' : '#FF0800'}
+                onBlur={(e) => e.currentTarget.style.borderColor = darkMode ? '#333' : '#e0e0e0'}
+              />
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: darkMode ? '#fff' : '#111', marginBottom: '8px' }}>Price ($) *</label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={formData.amount}
+                onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                required
+                placeholder="15.00"
+                style={{ width: '100%', padding: '12px 16px', borderRadius: '10px', border: `2px solid ${darkMode ? '#333' : '#e0e0e0'}`, backgroundColor: darkMode ? '#2a2a2a' : '#fff', color: darkMode ? '#fff' : '#111', fontSize: '14px', outline: 'none', transition: 'border-color 0.2s' }}
+                onFocus={(e) => e.currentTarget.style.borderColor = darkMode ? '#3b82f6' : '#FF0800'}
+                onBlur={(e) => e.currentTarget.style.borderColor = darkMode ? '#333' : '#e0e0e0'}
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: darkMode ? '#fff' : '#111', marginBottom: '8px' }}>Status</label>
+              <select
+                value={formData.status}
+                onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                style={{ width: '100%', padding: '12px 16px', borderRadius: '10px', border: `2px solid ${darkMode ? '#333' : '#e0e0e0'}`, backgroundColor: darkMode ? '#2a2a2a' : '#fff', color: darkMode ? '#fff' : '#111', fontSize: '14px', outline: 'none', transition: 'border-color 0.2s', cursor: 'pointer' }}
+                onFocus={(e) => e.currentTarget.style.borderColor = darkMode ? '#3b82f6' : '#FF0800'}
+                onBlur={(e) => e.currentTarget.style.borderColor = darkMode ? '#333' : '#e0e0e0'}
+              >
+                <option value="Active">Active</option>
+                <option value="InActive">Inactive</option>
+              </select>
+            </div>
+          </div>
+
+          <div style={{ marginBottom: '20px' }}>
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: darkMode ? '#fff' : '#111', marginBottom: '8px' }}>Poster URL</label>
+            <input
+              type="text"
+              value={formData.posterUrl}
+              onChange={(e) => setFormData({ ...formData, posterUrl: e.target.value })}
+              placeholder="https://example.com/poster.jpg"
+              style={{ width: '100%', padding: '12px 16px', borderRadius: '10px', border: `2px solid ${darkMode ? '#333' : '#e0e0e0'}`, backgroundColor: darkMode ? '#2a2a2a' : '#fff', color: darkMode ? '#fff' : '#111', fontSize: '14px', outline: 'none', transition: 'border-color 0.2s' }}
+              onFocus={(e) => e.currentTarget.style.borderColor = darkMode ? '#3b82f6' : '#FF0800'}
+              onBlur={(e) => e.currentTarget.style.borderColor = darkMode ? '#333' : '#e0e0e0'}
+            />
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: darkMode ? '#fff' : '#111', marginBottom: '8px' }}>Director</label>
+              <input
+                type="text"
+                value={formData.director}
+                onChange={(e) => setFormData({ ...formData, director: e.target.value })}
+                placeholder="Christopher Nolan"
+                style={{ width: '100%', padding: '12px 16px', borderRadius: '10px', border: `2px solid ${darkMode ? '#333' : '#e0e0e0'}`, backgroundColor: darkMode ? '#2a2a2a' : '#fff', color: darkMode ? '#fff' : '#111', fontSize: '14px', outline: 'none', transition: 'border-color 0.2s' }}
+                onFocus={(e) => e.currentTarget.style.borderColor = darkMode ? '#3b82f6' : '#FF0800'}
+                onBlur={(e) => e.currentTarget.style.borderColor = darkMode ? '#333' : '#e0e0e0'}
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: darkMode ? '#fff' : '#111', marginBottom: '8px' }}>Language</label>
+              <input
+                type="text"
+                value={formData.language}
+                onChange={(e) => setFormData({ ...formData, language: e.target.value })}
+                placeholder="English"
+                style={{ width: '100%', padding: '12px 16px', borderRadius: '10px', border: `2px solid ${darkMode ? '#333' : '#e0e0e0'}`, backgroundColor: darkMode ? '#2a2a2a' : '#fff', color: darkMode ? '#fff' : '#111', fontSize: '14px', outline: 'none', transition: 'border-color 0.2s' }}
+                onFocus={(e) => e.currentTarget.style.borderColor = darkMode ? '#3b82f6' : '#FF0800'}
+                onBlur={(e) => e.currentTarget.style.borderColor = darkMode ? '#333' : '#e0e0e0'}
+              />
+            </div>
+          </div>
+
+          <div style={{ marginBottom: '24px' }}>
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: darkMode ? '#fff' : '#111', marginBottom: '8px' }}>Genres (comma separated)</label>
+            <input
+              type="text"
+              value={formData.genres}
+              onChange={(e) => setFormData({ ...formData, genres: e.target.value })}
+              placeholder="Action, Drama, Thriller"
+              style={{ width: '100%', padding: '12px 16px', borderRadius: '10px', border: `2px solid ${darkMode ? '#333' : '#e0e0e0'}`, backgroundColor: darkMode ? '#2a2a2a' : '#fff', color: darkMode ? '#fff' : '#111', fontSize: '14px', outline: 'none', transition: 'border-color 0.2s' }}
+              onFocus={(e) => e.currentTarget.style.borderColor = darkMode ? '#3b82f6' : '#FF0800'}
+              onBlur={(e) => e.currentTarget.style.borderColor = darkMode ? '#333' : '#e0e0e0'}
+            />
+          </div>
+
+          <div style={{ display: 'flex', gap: '12px', paddingTop: '16px', borderTop: `1px solid ${darkMode ? '#333' : '#e0e0e0'}` }}>
             <button
               type="button"
               onClick={onClose}
-              style={{ flex: 1, padding: '10px', borderRadius: '8px', border: `1px solid ${darkMode ? '#333' : '#f0e0e0'}`, backgroundColor: 'transparent', color: darkMode ? '#fff' : '#111', fontWeight: '600', fontSize: '13px', cursor: 'pointer' }}
+              style={{ flex: 1, padding: '14px 20px', borderRadius: '10px', border: `2px solid ${darkMode ? '#333' : '#e0e0e0'}`, backgroundColor: 'transparent', color: darkMode ? '#fff' : '#111', fontWeight: '600', fontSize: '14px', cursor: 'pointer', transition: 'all 0.2s' }}
+              onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = darkMode ? '#333' : '#f5f5f5' }}
+              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent' }}
             >
               Cancel
             </button>
             <button
               type="submit"
-              style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', backgroundColor: darkMode ? '#3b82f6' : '#FF0800', color: '#fff', fontWeight: '600', fontSize: '13px', cursor: 'pointer' }}
+              style={{ flex: 1, padding: '14px 20px', borderRadius: '10px', border: 'none', backgroundColor: darkMode ? '#3b82f6' : '#FF0800', color: '#fff', fontWeight: '600', fontSize: '14px', cursor: 'pointer', transition: 'all 0.2s' }}
+              onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.9' }}
+              onMouseLeave={(e) => { e.currentTarget.style.opacity = '1' }}
             >
-              {isEdit ? 'Update' : 'Add'}
+              {isEdit ? 'Update Movie' : 'Add Movie'}
             </button>
           </div>
         </form>
@@ -334,16 +458,36 @@ const ViewMovieModal = ({ darkMode, isOpen, onClose, movie }) => {
           <p style={{ margin: '4px 0 0', fontSize: '15px', fontWeight: '600', color: darkMode ? '#fff' : '#111' }}>{movie.title}</p>
         </div>
         <div style={{ marginBottom: '12px' }}>
-          <p style={{ margin: 0, fontSize: '12px', color: '#aaa' }}>Genre</p>
-          <p style={{ margin: '4px 0 0', fontSize: '15px', fontWeight: '600', color: darkMode ? '#fff' : '#111' }}>{movie.genre}</p>
+          <p style={{ margin: 0, fontSize: '12px', color: '#aaa' }}>Description</p>
+          <p style={{ margin: '4px 0 0', fontSize: '15px', fontWeight: '600', color: darkMode ? '#fff' : '#111' }}>{movie.description}</p>
         </div>
         <div style={{ marginBottom: '12px' }}>
-          <p style={{ margin: 0, fontSize: '12px', color: '#aaa' }}>Revenue</p>
-          <p style={{ margin: '4px 0 0', fontSize: '15px', fontWeight: '600', color: darkMode ? '#fff' : '#111' }}>{movie.revenue}</p>
+          <p style={{ margin: 0, fontSize: '12px', color: '#aaa' }}>Duration</p>
+          <p style={{ margin: '4px 0 0', fontSize: '15px', fontWeight: '600', color: darkMode ? '#fff' : '#111' }}>{movie.duration} min</p>
+        </div>
+        <div style={{ marginBottom: '12px' }}>
+          <p style={{ margin: 0, fontSize: '12px', color: '#aaa' }}>Rating</p>
+          <p style={{ margin: '4px 0 0', fontSize: '15px', fontWeight: '600', color: darkMode ? '#fff' : '#111' }}>{movie.rating}</p>
+        </div>
+        <div style={{ marginBottom: '12px' }}>
+          <p style={{ margin: 0, fontSize: '12px', color: '#aaa' }}>Price</p>
+          <p style={{ margin: '4px 0 0', fontSize: '15px', fontWeight: '600', color: darkMode ? '#fff' : '#111' }}>${movie.amount}</p>
+        </div>
+        <div style={{ marginBottom: '12px' }}>
+          <p style={{ margin: 0, fontSize: '12px', color: '#aaa' }}>Director</p>
+          <p style={{ margin: '4px 0 0', fontSize: '15px', fontWeight: '600', color: darkMode ? '#fff' : '#111' }}>{movie.director}</p>
+        </div>
+        <div style={{ marginBottom: '12px' }}>
+          <p style={{ margin: 0, fontSize: '12px', color: '#aaa' }}>Language</p>
+          <p style={{ margin: '4px 0 0', fontSize: '15px', fontWeight: '600', color: darkMode ? '#fff' : '#111' }}>{movie.language}</p>
+        </div>
+        <div style={{ marginBottom: '12px' }}>
+          <p style={{ margin: 0, fontSize: '12px', color: '#aaa' }}>Genres</p>
+          <p style={{ margin: '4px 0 0', fontSize: '15px', fontWeight: '600', color: darkMode ? '#fff' : '#111' }}>{movie.genres ? movie.genres.join(', ') : 'N/A'}</p>
         </div>
         <div>
           <p style={{ margin: 0, fontSize: '12px', color: '#aaa' }}>Status</p>
-          <span style={{ display: 'inline-block', marginTop: '4px', fontSize: '11px', fontWeight: '600', padding: '3px 10px', borderRadius: '99px', backgroundColor: movie.status === 'active' ? '#dcfce7' : '#f5f5f5', color: movie.status === 'active' ? '#16a34a' : '#888' }}>{movie.status}</span>
+          <span style={{ display: 'inline-block', marginTop: '4px', fontSize: '11px', fontWeight: '600', padding: '3px 10px', borderRadius: '99px', backgroundColor: movie.status === 'Active' ? '#dcfce7' : '#f5f5f5', color: movie.status === 'Active' ? '#16a34a' : '#888' }}>{movie.status}</span>
         </div>
       </div>
     </div>
@@ -587,9 +731,11 @@ const TABS = ['Overview', 'Movies', 'Users', 'Bookings'];
 
 const AdminDashboard = ({ user }) => {
   const { isDarkMode } = useTheme();
+  const { token } = useAuth();
   const [activeTab,    setActiveTab]    = useState('Overview');
   const [menuOpen,     setMenuOpen]     = useState(false);
-  const [movies,       setMovies]       = useState(initialMovies);
+  const [movies,       setMovies]       = useState([]);
+  const [loading,      setLoading]      = useState(false);
   const [isModalOpen,  setIsModalOpen]  = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [editingMovie, setEditingMovie] = useState(null);
@@ -601,6 +747,30 @@ const AdminDashboard = ({ user }) => {
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [editingBooking, setEditingBooking] = useState(null);
 
+  // Fetch movies from API
+  useEffect(() => {
+    const fetchMovies = async () => {
+      setLoading(true);
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/movies`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setMovies(data);
+        }
+      } catch (error) {
+        console.error('Error fetching movies:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchMovies();
+  }, [token]);
+
   const handleAddMovie = () => {
     setEditingMovie(null);
     setIsModalOpen(true);
@@ -611,12 +781,20 @@ const AdminDashboard = ({ user }) => {
     setIsModalOpen(true);
   };
 
-  const handleDeleteMovie = (index) => {
-    
-      const newMovies = [...movies];
-      newMovies.splice(index, 1);
-      setMovies(newMovies);
-    
+  const handleDeleteMovie = async (movieId) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/movies/${movieId}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (response.ok) {
+        setMovies(movies.filter(m => m.id !== movieId));
+      }
+    } catch (error) {
+      console.error('Error deleting movie:', error);
+    }
   };
 
   const handleViewMovie = (movie) => {
@@ -624,11 +802,56 @@ const AdminDashboard = ({ user }) => {
     setIsViewModalOpen(true);
   };
 
-  const handleModalSubmit = (formData) => {
-    if (editingMovie) {
-      setMovies(movies.map(m => m === editingMovie ? formData : m));
-    } else {
-      setMovies([...movies, formData]);
+  const handleModalSubmit = async (formData) => {
+    try {
+      const movieData = {
+        title: formData.title,
+        description: formData.description,
+        duration: parseInt(formData.duration),
+        rating: parseFloat(formData.rating),
+        amount: parseFloat(formData.amount),
+        posterUrl: formData.posterUrl,
+        director: formData.director,
+        language: formData.language,
+        status: formData.status,
+        genres: formData.genres ? formData.genres.split(',').map(g => g.trim()) : [],
+      };
+
+      let response;
+      if (editingMovie) {
+        response = await fetch(`${API_BASE_URL}/api/movies/${editingMovie.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(movieData),
+        });
+      } else {
+        response = await fetch(`${API_BASE_URL}/api/movies`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(movieData),
+        });
+      }
+
+      if (response.ok) {
+        // Refresh movies list
+        const fetchResponse = await fetch(`${API_BASE_URL}/api/movies`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        if (fetchResponse.ok) {
+          const data = await fetchResponse.json();
+          setMovies(data);
+        }
+      }
+    } catch (error) {
+      console.error('Error saving movie:', error);
     }
     setIsModalOpen(false);
     setEditingMovie(null);

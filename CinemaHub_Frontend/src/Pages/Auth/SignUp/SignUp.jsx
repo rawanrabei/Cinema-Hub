@@ -41,6 +41,7 @@ const Register = () => {
         name: fullName,
         email: formData.email,
         password: formData.password,
+        role: "user",
       });
       navigate(getRoleRedirect(registeredUser.role), { replace: true });
     } catch (err) {

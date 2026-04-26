@@ -1,6 +1,7 @@
 package movie_service.movie_service.controller;
 
 import movie_service.movie_service.model.Movie;
+import movie_service.movie_service.producer.MovieProducer;
 import movie_service.movie_service.service.MovieService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -13,6 +14,9 @@ public class MovieController {
 
     @Autowired
     private MovieService movieService;
+
+    @Autowired
+    private MovieProducer movieProducer;
 
     //Customer  view all movies
     @GetMapping
@@ -29,20 +33,23 @@ public class MovieController {
     //Admin Add Moviea
     @PostMapping
     public Movie addMovie(@RequestBody Movie movie) {
-        return movieService.addMovie(movie);
+        Movie savedMovie = movieService.addMovie(movie);
+        movieProducer.sendMovieAddedEvent(savedMovie);
+        return savedMovie;
     }
 
     //Admin Update Movie
     @PutMapping("/{id}")
     public Movie updateMovie(@PathVariable Long id, @RequestBody Movie movie) {
-        return movieService.updateMovie(id, movie);
+        Movie updatedMovie = movieService.updateMovie(id, movie);
+        movieProducer.sendMovieUpdatedEvent(updatedMovie);
+        return updatedMovie;
     }
 
     //Admin Delete Movie
     @DeleteMapping("/{id}")
     public void deleteMovie(@PathVariable Long id) {
         movieService.deleteMovie(id);
+        movieProducer.sendMovieDeletedEvent(id);
     }
-
-
 }

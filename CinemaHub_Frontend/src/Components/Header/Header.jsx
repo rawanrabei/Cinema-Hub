@@ -212,7 +212,7 @@ const Header = () => {
             )}
 
             <Link
-              to="/login"
+              to="/user-profile"
               className={`hidden md:flex items-center gap-2 px-3 py-2 text-sm backdrop-blur-sm border rounded-lg transition-all duration-300 group transform hover:scale-105 ${textColor}`}
               style={{
                 backgroundColor: isDarkMode
@@ -428,7 +428,7 @@ const Header = () => {
               )}
 
               <Link
-                to="/login"
+                to="/user-profile"
                 onClick={() => setIsMenuOpen(false)}
                 className={`flex items-center gap-2 px-4 py-2.5 text-sm border rounded-lg transition-all mt-2 ${textColor}`}
                 style={{
