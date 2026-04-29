@@ -9,20 +9,50 @@ import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 
 // ── Data ───────────────────────────────────────────────
-const getStats = (isDarkMode) => [
-  { iconEl: <DollarSign size={22} color="#22c55e" />, label: 'Total Revenue',   value: '$125,430', badge: '+12.5%', badgeColor: '#dcfce7', badgeText: '#16a34a' },
-  { iconEl: <Ticket     size={22} color={isDarkMode ? '#3b82f6' : '#FF0800'} />, label: 'Total Bookings',  value: '1,234',    badge: '+8.2%',  badgeColor: isDarkMode ? '#dbeafe' : '#ffe0de', badgeText: isDarkMode ? '#1d4ed8' : '#FF0800' },
-  { iconEl: <Film       size={22} color={isDarkMode ? '#3b82f6' : '#FF0800'} />, label: 'Active Movies',   value: '24',       badge: '+3',     badgeColor: isDarkMode ? '#dbeafe' : '#ffe0de', badgeText: isDarkMode ? '#1d4ed8' : '#FF0800' },
-  { iconEl: <Users      size={22} color="#a855f7" />, label: 'Total Customers', value: '5,678',    badge: '+15.3%', badgeColor: '#f3e8ff', badgeText: '#7e22ce' },
-];
+const getStats = (isDarkMode, bookings, movies, users) => {
+  // Calculate real stats from backend data
+  const totalRevenue = bookings.reduce((sum, b) => {
+    const price = parseFloat(b.amount?.replace('$', '') || b.totalPrice || 0);
+    return sum + price;
+  }, 0);
+  
+  const totalBookings = bookings.length;
+  const activeMovies = movies.filter(m => m.status === 'Active').length;
+  const totalCustomers = users.filter(u => u.role === 'USER' || u.role === 'user').length;
+  
+  // Today's bookings
+  const today = new Date().toISOString().split('T')[0];
+  const todayBookings = bookings.filter(b => b.date === today).length;
+  
+  // Confirmed bookings
+  const confirmedBookings = bookings.filter(b => b.status === 'CONFIRMED').length;
+  
+  // Pending bookings
+  const pendingBookings = bookings.filter(b => b.status === 'PENDING').length;
+  
+  // Revenue today
+  const revenueToday = bookings
+    .filter(b => b.date === today)
+    .reduce((sum, b) => {
+      const price = parseFloat(b.amount?.replace('$', '') || b.totalPrice || 0);
+      return sum + price;
+    }, 0);
+
+  return [
+    { iconEl: <DollarSign size={22} color="#22c55e" />, label: 'Total Revenue',   value: `$${totalRevenue.toLocaleString()}`, badge: '+12%', badgeColor: '#dcfce7', badgeText: '#16a34a' },
+    { iconEl: <Ticket     size={22} color={isDarkMode ? '#3b82f6' : '#FF0800'} />, label: 'Total Bookings',  value: totalBookings.toLocaleString(),    badge: '+8%',  badgeColor: isDarkMode ? '#dbeafe' : '#ffe0de', badgeText: isDarkMode ? '#1d4ed8' : '#FF0800' },
+    { iconEl: <Film       size={22} color={isDarkMode ? '#3b82f6' : '#FF0800'} />, label: 'Active Movies',   value: activeMovies,       badge: '+3',     badgeColor: isDarkMode ? '#dbeafe' : '#ffe0de', badgeText: isDarkMode ? '#1d4ed8' : '#FF0800' },
+    { iconEl: <Users      size={22} color="#a855f7" />, label: 'Total Customers', value: totalCustomers,    badge: '+12%', badgeColor: '#f3e8ff', badgeText: '#7e22ce' },
+    { iconEl: <CalendarDays size={22} color="#f59e0b" />, label: "Today's Bookings", value: todayBookings, badge: '+8%', badgeColor: '#fef3c7', badgeText: '#d97706' },
+    { iconEl: <TrendingUp size={22} color="#22c55e" />, label: 'Confirmed', value: confirmedBookings, badge: '+5%', badgeColor: '#dcfce7', badgeText: '#16a34a' },
+    { iconEl: <Ticket size={22} color="#f59e0b" />, label: 'Pending', value: pendingBookings, badge: '+15%', badgeColor: '#fef3c7', badgeText: '#d97706' },
+    { iconEl: <DollarSign size={22} color="#22c55e" />, label: "Revenue Today", value: `$${revenueToday.toLocaleString()}`, badge: '+15%', badgeColor: '#dcfce7', badgeText: '#16a34a' },
+  ];
+};
 
 const API_BASE_URL = 'http://localhost:8080';
 
-const users = [
-  { name: 'John Doe',    email: 'john@example.com', bookings: 12, role: 'customer' },
-  { name: 'Jane Smith',  email: 'jane@example.com', bookings: 8,  role: 'customer' },
-  { name: 'Bob Johnson', email: 'bob@example.com',  bookings: 0,  role: 'employee' },
-];
+const users = [];
 
 const initialMovies = [];
 
@@ -98,7 +128,7 @@ const OverviewTab = ({ darkMode, bookings }) => (
   </div>
 );
 
-const MoviesTab = ({ darkMode, movies, onAddMovie, onEditMovie, onDeleteMovie, onViewMovie }) => {
+const MoviesTab = ({ darkMode, movies, onEditMovie, onDeleteMovie, onViewMovie }) => {
   const [search, setSearch] = useState('');
   const filtered = movies.filter(m => m.title.toLowerCase().includes(search.toLowerCase()));
   return (
@@ -111,9 +141,6 @@ const MoviesTab = ({ darkMode, movies, onAddMovie, onEditMovie, onDeleteMovie, o
           </div>
           <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#aaa' }}>Manage all movies in the system</p>
         </div>
-        <button onClick={onAddMovie} style={{ display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: darkMode ? '#3b82f6' : '#FF0800', color: '#fff', border: 'none', borderRadius: '8px', padding: '9px 16px', cursor: 'pointer', fontWeight: '600', fontSize: '13px' }}>
-          <Plus size={14} /> Add Movie
-        </button>
       </div>
       <SearchBar value={search} onChange={e => setSearch(e.target.value)} placeholder="Search movies..." darkMode={darkMode} />
       {filtered.map((m) => (
@@ -134,9 +161,11 @@ const MoviesTab = ({ darkMode, movies, onAddMovie, onEditMovie, onDeleteMovie, o
   );
 };
 
-const UsersTab = ({ darkMode, users, onAddUser, onEditUser, onDeleteUser }) => {
+const UsersTab = ({ darkMode, users, onEditUser, onDeleteUser, currentUser }) => {
   const [search, setSearch] = useState('');
-  const filtered = users.filter(u => u.name.toLowerCase().includes(search.toLowerCase()));
+  const filtered = users
+    .filter(u => u.id !== currentUser?.id && u.email !== currentUser?.email)
+    .filter(u => u.name?.toLowerCase().includes(search.toLowerCase()) || u.email?.toLowerCase().includes(search.toLowerCase()));
   return (
     <div style={card(darkMode)}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
@@ -145,23 +174,18 @@ const UsersTab = ({ darkMode, users, onAddUser, onEditUser, onDeleteUser }) => {
             <Users size={16} color={darkMode ? '#3b82f6' : '#FF0800'} />
             <span style={{ fontWeight: '700', fontSize: '15px', color: darkMode ? '#fff' : '#111' }}>Users Management</span>
           </div>
-          <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#aaa' }}>Manage all users and roles</p>
+          <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#aaa' }}>View all users and their roles</p>
         </div>
-        <button onClick={onAddUser} style={{ display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: darkMode ? '#3b82f6' : '#FF0800', color: '#fff', border: 'none', borderRadius: '8px', padding: '9px 16px', cursor: 'pointer', fontWeight: '600', fontSize: '13px' }}>
-          <Plus size={14} /> Add User
-        </button>
       </div>
       <SearchBar value={search} onChange={e => setSearch(e.target.value)} placeholder="Search users..." darkMode={darkMode} />
       {filtered.map((u, i) => (
-        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 14px', borderRadius: '10px', marginBottom: '8px', border: `1px solid ${darkMode ? '#333' : '#f0e0e0'}`, flexWrap: 'wrap', gap: '8px' }}>
+        <div key={u.id || i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 14px', borderRadius: '10px', marginBottom: '8px', border: `1px solid ${darkMode ? '#333' : '#f0e0e0'}`, flexWrap: 'wrap', gap: '8px' }}>
           <div>
-            <p style={{ margin: 0, fontWeight: '600', fontSize: '14px', color: darkMode ? '#fff' : '#111' }}>{u.name}</p>
-            <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#aaa' }}>{u.email} &nbsp; Bookings: {u.bookings}</p>
+            <p style={{ margin: 0, fontWeight: '600', fontSize: '14px', color: darkMode ? '#fff' : '#111' }}>{u.username || u.name || 'N/A'}</p>
+            <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#aaa' }}>{u.email}</p>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span style={{ fontSize: '11px', fontWeight: '600', padding: '3px 10px', borderRadius: '99px', backgroundColor: roleBadge(u.role, darkMode).bg, color: roleBadge(u.role, darkMode).color }}>{u.role}</span>
-            <Pencil size={15} color="#aaa" style={{ cursor: 'pointer' }} onClick={() => onEditUser(u)} />
-            <Trash2 size={15} color="#aaa" style={{ cursor: 'pointer' }} onClick={() => onDeleteUser(i)} />
+            <span style={{ fontSize: '11px', fontWeight: '600', padding: '3px 10px', borderRadius: '99px', backgroundColor: roleBadge(u.role?.toLowerCase() || 'customer', darkMode).bg, color: roleBadge(u.role?.toLowerCase() || 'customer', darkMode).color }}>{u.role || 'USER'}</span>
           </div>
         </div>
       ))}
@@ -169,9 +193,9 @@ const UsersTab = ({ darkMode, users, onAddUser, onEditUser, onDeleteUser }) => {
   );
 };
 
-const BookingsTab = ({ darkMode, bookings, onAddBooking, onEditBooking, onDeleteBooking }) => {
+const BookingsTab = ({ darkMode, bookings, onDeleteBooking }) => {
   const [search, setSearch] = useState('');
-  const filtered = bookings.filter(b => b.movie.toLowerCase().includes(search.toLowerCase()) || b.customer.toLowerCase().includes(search.toLowerCase()));
+  const filtered = bookings.filter(b => b.movie?.toLowerCase().includes(search.toLowerCase()) || b.customer?.toLowerCase().includes(search.toLowerCase()));
   return (
     <div style={card(darkMode)}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
@@ -180,24 +204,19 @@ const BookingsTab = ({ darkMode, bookings, onAddBooking, onEditBooking, onDelete
             <Ticket size={16} color={darkMode ? '#3b82f6' : '#FF0800'} />
             <span style={{ fontWeight: '700', fontSize: '15px', color: darkMode ? '#fff' : '#111' }}>All Bookings</span>
           </div>
-          <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#aaa' }}>View and manage all bookings</p>
+          <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#aaa' }}>View all bookings in the system</p>
         </div>
-        <button onClick={onAddBooking} style={{ display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: darkMode ? '#3b82f6' : '#FF0800', color: '#fff', border: 'none', borderRadius: '8px', padding: '9px 16px', cursor: 'pointer', fontWeight: '600', fontSize: '13px' }}>
-          <Plus size={14} /> Add Booking
-        </button>
       </div>
       <SearchBar value={search} onChange={e => setSearch(e.target.value)} placeholder="Search bookings..." darkMode={darkMode} />
       {filtered.map((b, i) => (
-        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 14px', borderRadius: '10px', marginBottom: '8px', border: `1px solid ${darkMode ? '#333' : '#f0e0e0'}`, flexWrap: 'wrap', gap: '8px' }}>
+        <div key={b.bookingId || i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 14px', borderRadius: '10px', marginBottom: '8px', border: `1px solid ${darkMode ? '#333' : '#f0e0e0'}`, flexWrap: 'wrap', gap: '8px' }}>
           <div>
             <p style={{ margin: 0, fontWeight: '600', fontSize: '14px', color: darkMode ? '#fff' : '#111' }}>{b.movie}</p>
             <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#aaa' }}>Customer: {b.customer} &nbsp; Date: {b.date}</p>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <span style={{ color: darkMode ? '#22c55e' : '#16a34a', fontWeight: '700', fontSize: '14px' }}>{b.amount}</span>
-            <span style={{ fontSize: '10px', fontWeight: '600', padding: '2px 8px', borderRadius: '99px', backgroundColor: b.status === 'confirmed' ? (darkMode ? '#3b82f6' : '#FF0800') : '#f5f5f5', color: b.status === 'confirmed' ? '#fff' : '#888' }}>{b.status}</span>
-            <Pencil size={15} color="#aaa" style={{ cursor: 'pointer' }} onClick={() => onEditBooking(b)} />
-            <Trash2 size={15} color="#aaa" style={{ cursor: 'pointer' }} onClick={() => onDeleteBooking(i)} />
+            <span style={{ fontSize: '10px', fontWeight: '600', padding: '2px 8px', borderRadius: '99px', backgroundColor: b.status === 'CONFIRMED' ? (darkMode ? '#3b82f6' : '#FF0800') : '#f5f5f5', color: b.status === 'CONFIRMED' ? '#fff' : '#888' }}>{b.status}</span>
           </div>
         </div>
       ))}
@@ -492,238 +511,6 @@ const ViewMovieModal = ({ darkMode, isOpen, onClose, movie }) => {
   );
 };
 
-// ── User Modal ───────────────────────────────────────────
-const UserModal = ({ darkMode, isOpen, onClose, onSubmit, user, isEdit }) => {
-  const [formData, setFormData] = useState({
-    name: user?.name || '',
-    email: user?.email || '',
-    bookings: user?.bookings || 0,
-    role: user?.role || 'customer'
-  });
-
-  useEffect(() => {
-    if (user) {
-      setFormData({
-        name: user.name,
-        email: user.email,
-        bookings: user.bookings,
-        role: user.role
-      });
-    } else {
-      setFormData({
-        name: '',
-        email: '',
-        bookings: 0,
-        role: 'customer'
-      });
-    }
-  }, [user]);
-
-  if (!isOpen) return null;
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    onSubmit(formData);
-  };
-
-  return (
-    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-      <div style={{ backgroundColor: darkMode ? '#1e1e1e' : '#fff', borderRadius: '16px', padding: '24px', width: '90%', maxWidth: '400px', border: `1px solid ${darkMode ? '#333' : '#f0e0e0'}` }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-          <h2 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: darkMode ? '#fff' : '#111' }}>
-            {isEdit ? 'Edit User' : 'Add New User'}
-          </h2>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}>
-            <CloseIcon size={20} color={darkMode ? '#fff' : '#111'} />
-          </button>
-        </div>
-        <form onSubmit={handleSubmit}>
-          <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: darkMode ? '#fff' : '#111', marginBottom: '6px' }}>Name</label>
-            <input
-              type="text"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              required
-              style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: `1px solid ${darkMode ? '#333' : '#f0e0e0'}`, backgroundColor: darkMode ? '#2a2a2a' : '#fff', color: darkMode ? '#fff' : '#111', fontSize: '13px', outline: 'none' }}
-            />
-          </div>
-          <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: darkMode ? '#fff' : '#111', marginBottom: '6px' }}>Email</label>
-            <input
-              type="email"
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              required
-              style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: `1px solid ${darkMode ? '#333' : '#f0e0e0'}`, backgroundColor: darkMode ? '#2a2a2a' : '#fff', color: darkMode ? '#fff' : '#111', fontSize: '13px', outline: 'none' }}
-            />
-          </div>
-          <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: darkMode ? '#fff' : '#111', marginBottom: '6px' }}>Bookings</label>
-            <input
-              type="number"
-              value={formData.bookings}
-              onChange={(e) => setFormData({ ...formData, bookings: parseInt(e.target.value) || 0 })}
-              required
-              min="0"
-              style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: `1px solid ${darkMode ? '#333' : '#f0e0e0'}`, backgroundColor: darkMode ? '#2a2a2a' : '#fff', color: darkMode ? '#fff' : '#111', fontSize: '13px', outline: 'none' }}
-            />
-          </div>
-          <div style={{ marginBottom: '20px' }}>
-            <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: darkMode ? '#fff' : '#111', marginBottom: '6px' }}>Role</label>
-            <select
-              value={formData.role}
-              onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-              style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: `1px solid ${darkMode ? '#333' : '#f0e0e0'}`, backgroundColor: darkMode ? '#2a2a2a' : '#fff', color: darkMode ? '#fff' : '#111', fontSize: '13px', outline: 'none' }}
-            >
-              <option value="customer">Customer</option>
-              <option value="employee">Employee</option>
-              <option value="admin">Admin</option>
-            </select>
-          </div>
-          <div style={{ display: 'flex', gap: '10px' }}>
-            <button
-              type="button"
-              onClick={onClose}
-              style={{ flex: 1, padding: '10px', borderRadius: '8px', border: `1px solid ${darkMode ? '#333' : '#f0e0e0'}`, backgroundColor: 'transparent', color: darkMode ? '#fff' : '#111', fontWeight: '600', fontSize: '13px', cursor: 'pointer' }}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', backgroundColor: darkMode ? '#3b82f6' : '#FF0800', color: '#fff', fontWeight: '600', fontSize: '13px', cursor: 'pointer' }}
-            >
-              {isEdit ? 'Update' : 'Add'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-};
-
-// ── Booking Modal ───────────────────────────────────────────
-const BookingModal = ({ darkMode, isOpen, onClose, onSubmit, booking, isEdit }) => {
-  const [formData, setFormData] = useState({
-    movie: booking?.movie || '',
-    customer: booking?.customer || '',
-    date: booking?.date || '',
-    amount: booking?.amount || '',
-    status: booking?.status || 'confirmed'
-  });
-
-  useEffect(() => {
-    if (booking) {
-      setFormData({
-        movie: booking.movie,
-        customer: booking.customer,
-        date: booking.date,
-        amount: booking.amount,
-        status: booking.status
-      });
-    } else {
-      setFormData({
-        movie: '',
-        customer: '',
-        date: '',
-        amount: '',
-        status: 'confirmed'
-      });
-    }
-  }, [booking]);
-
-  if (!isOpen) return null;
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    onSubmit(formData);
-  };
-
-  return (
-    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-      <div style={{ backgroundColor: darkMode ? '#1e1e1e' : '#fff', borderRadius: '16px', padding: '24px', width: '90%', maxWidth: '400px', border: `1px solid ${darkMode ? '#333' : '#f0e0e0'}` }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-          <h2 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: darkMode ? '#fff' : '#111' }}>
-            {isEdit ? 'Edit Booking' : 'Add New Booking'}
-          </h2>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}>
-            <CloseIcon size={20} color={darkMode ? '#fff' : '#111'} />
-          </button>
-        </div>
-        <form onSubmit={handleSubmit}>
-          <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: darkMode ? '#fff' : '#111', marginBottom: '6px' }}>Movie</label>
-            <input
-              type="text"
-              value={formData.movie}
-              onChange={(e) => setFormData({ ...formData, movie: e.target.value })}
-              required
-              style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: `1px solid ${darkMode ? '#333' : '#f0e0e0'}`, backgroundColor: darkMode ? '#2a2a2a' : '#fff', color: darkMode ? '#fff' : '#111', fontSize: '13px', outline: 'none' }}
-            />
-          </div>
-          <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: darkMode ? '#fff' : '#111', marginBottom: '6px' }}>Customer</label>
-            <input
-              type="text"
-              value={formData.customer}
-              onChange={(e) => setFormData({ ...formData, customer: e.target.value })}
-              required
-              style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: `1px solid ${darkMode ? '#333' : '#f0e0e0'}`, backgroundColor: darkMode ? '#2a2a2a' : '#fff', color: darkMode ? '#fff' : '#111', fontSize: '13px', outline: 'none' }}
-            />
-          </div>
-          <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: darkMode ? '#fff' : '#111', marginBottom: '6px' }}>Date</label>
-            <input
-              type="date"
-              value={formData.date}
-              onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-              required
-              style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: `1px solid ${darkMode ? '#333' : '#f0e0e0'}`, backgroundColor: darkMode ? '#2a2a2a' : '#fff', color: darkMode ? '#fff' : '#111', fontSize: '13px', outline: 'none' }}
-            />
-          </div>
-          <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: darkMode ? '#fff' : '#111', marginBottom: '6px' }}>Amount</label>
-            <input
-              type="text"
-              value={formData.amount}
-              onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-              required
-              placeholder="$0"
-              style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: `1px solid ${darkMode ? '#333' : '#f0e0e0'}`, backgroundColor: darkMode ? '#2a2a2a' : '#fff', color: darkMode ? '#fff' : '#111', fontSize: '13px', outline: 'none' }}
-            />
-          </div>
-          <div style={{ marginBottom: '20px' }}>
-            <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: darkMode ? '#fff' : '#111', marginBottom: '6px' }}>Status</label>
-            <select
-              value={formData.status}
-              onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-              style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: `1px solid ${darkMode ? '#333' : '#f0e0e0'}`, backgroundColor: darkMode ? '#2a2a2a' : '#fff', color: darkMode ? '#fff' : '#111', fontSize: '13px', outline: 'none' }}
-            >
-              <option value="confirmed">Confirmed</option>
-              <option value="pending">Pending</option>
-            </select>
-          </div>
-          <div style={{ display: 'flex', gap: '10px' }}>
-            <button
-              type="button"
-              onClick={onClose}
-              style={{ flex: 1, padding: '10px', borderRadius: '8px', border: `1px solid ${darkMode ? '#333' : '#f0e0e0'}`, backgroundColor: 'transparent', color: darkMode ? '#fff' : '#111', fontWeight: '600', fontSize: '13px', cursor: 'pointer' }}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', backgroundColor: darkMode ? '#3b82f6' : '#FF0800', color: '#fff', fontWeight: '600', fontSize: '13px', cursor: 'pointer' }}
-            >
-              {isEdit ? 'Update' : 'Add'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-};
-
 // ── Main ───────────────────────────────────────────────
 const TABS = ['Overview', 'Movies', 'Users', 'Bookings'];
 
@@ -738,13 +525,33 @@ const AdminDashboard = ({ user }) => {
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [editingMovie, setEditingMovie] = useState(null);
   const [viewingMovie, setViewingMovie] = useState(null);
-  const [allUsers, setAllUsers] = useState(users);
-  const [isUserModalOpen, setIsUserModalOpen] = useState(false);
-  const [editingUser, setEditingUser] = useState(null);
+  const [allUsers, setAllUsers] = useState([]);
   const [allBookings, setAllBookings] = useState([]);
   const [loadingBookings, setLoadingBookings] = useState(false);
-  const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
-  const [editingBooking, setEditingBooking] = useState(null);
+
+  // Fetch users from API
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/auth/users`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        if (response.ok) {
+          const data = await response.json();
+          console.log('Fetched users:', data);
+          setAllUsers(data);
+        } else {
+          console.error('Failed to fetch users:', response.status);
+        }
+      } catch (error) {
+        console.error('Error fetching users:', error);
+      }
+    };
+
+    fetchUsers();
+  }, [token]);
 
   // Fetch movies from API
   useEffect(() => {
@@ -782,13 +589,32 @@ const AdminDashboard = ({ user }) => {
         });
         if (response.ok) {
           const data = await response.json();
-          // Transform backend response to frontend format
-          const transformedBookings = data.map(booking => ({
-            movie: `Showtime ${booking.showtimeId}`, // Will need to fetch movie details
-            customer: `User ${booking.userId}`, // Will need to fetch user details
-            date: booking.bookingTime ? booking.bookingTime.split('T')[0] : 'N/A',
-            amount: `$${booking.totalPrice || 0}`,
-            status: booking.status || 'confirmed',
+          // Transform backend response to frontend format with movie names
+          const transformedBookings = await Promise.all(data.map(async (booking) => {
+            let movieName = `Showtime ${booking.showtimeId}`;
+            let userName = `User ${booking.userId}`;
+            
+            // Fetch movie details if movieId is available
+            if (booking.movieId) {
+              try {
+                const movieResponse = await fetch(`${API_BASE_URL}/api/movies/${booking.movieId}`);
+                if (movieResponse.ok) {
+                  const movieData = await movieResponse.json();
+                  movieName = movieData.title || movieName;
+                }
+              } catch (e) {
+                console.error('Error fetching movie:', e);
+              }
+            }
+            
+            return {
+              bookingId: booking.bookingId,
+              movie: movieName,
+              customer: userName,
+              date: booking.bookingTime ? booking.bookingTime.split('T')[0] : 'N/A',
+              amount: `$${booking.totalPrice || 0}`,
+              status: booking.status || 'CONFIRMED',
+            };
           }));
           setAllBookings(transformedBookings);
         }
@@ -888,56 +714,14 @@ const AdminDashboard = ({ user }) => {
     setEditingMovie(null);
   };
 
-  const handleAddUser = () => {
-    setEditingUser(null);
-    setIsUserModalOpen(true);
+  const handleDeleteUser = (userId) => {
+    // User deletion not implemented - read-only view
+    console.log('Delete user:', userId);
   };
 
-  const handleEditUser = (user) => {
-    setEditingUser(user);
-    setIsUserModalOpen(true);
-  };
-
-  const handleDeleteUser = (index) => {
-    const newUsers = [...allUsers];
-    newUsers.splice(index, 1);
-    setAllUsers(newUsers);
-  };
-
-  const handleUserModalSubmit = (formData) => {
-    if (editingUser) {
-      setAllUsers(allUsers.map(u => u === editingUser ? formData : u));
-    } else {
-      setAllUsers([...allUsers, formData]);
-    }
-    setIsUserModalOpen(false);
-    setEditingUser(null);
-  };
-
-  const handleAddBooking = () => {
-    setEditingBooking(null);
-    setIsBookingModalOpen(true);
-  };
-
-  const handleEditBooking = (booking) => {
-    setEditingBooking(booking);
-    setIsBookingModalOpen(true);
-  };
-
-  const handleDeleteBooking = (index) => {
-    const newBookings = [...allBookings];
-    newBookings.splice(index, 1);
-    setAllBookings(newBookings);
-  };
-
-  const handleBookingModalSubmit = (formData) => {
-    if (editingBooking) {
-      setAllBookings(allBookings.map(b => b === editingBooking ? formData : b));
-    } else {
-      setAllBookings([...allBookings, formData]);
-    }
-    setIsBookingModalOpen(false);
-    setEditingBooking(null);
+  const handleDeleteBooking = (bookingId) => {
+    // Booking deletion not implemented - read-only view
+    console.log('Delete booking:', bookingId);
   };
 
   return (
@@ -978,7 +762,7 @@ const AdminDashboard = ({ user }) => {
 
       {/* ── Stats Grid ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '12px', marginBottom: '24px' }}>
-        {getStats(isDarkMode).map((s, i) => (
+        {getStats(isDarkMode, allBookings, movies, allUsers).map((s, i) => (
           <div key={i} style={{ ...card(isDarkMode), padding: '16px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
               {s.iconEl}
@@ -1026,8 +810,8 @@ const AdminDashboard = ({ user }) => {
       {/* ── Tab Content ── */}
       {activeTab === 'Overview' && <OverviewTab  darkMode={isDarkMode} bookings={allBookings} />}
       {activeTab === 'Movies'   && <MoviesTab    darkMode={isDarkMode} movies={movies} onAddMovie={handleAddMovie} onEditMovie={handleEditMovie} onDeleteMovie={handleDeleteMovie} onViewMovie={handleViewMovie} />}
-      {activeTab === 'Users'    && <UsersTab     darkMode={isDarkMode} users={allUsers} onAddUser={handleAddUser} onEditUser={handleEditUser} onDeleteUser={handleDeleteUser} />}
-      {activeTab === 'Bookings' && <BookingsTab  darkMode={isDarkMode} bookings={allBookings} onAddBooking={handleAddBooking} onEditBooking={handleEditBooking} onDeleteBooking={handleDeleteBooking} />}
+      {activeTab === 'Users'    && <UsersTab     darkMode={isDarkMode} users={allUsers} onDeleteUser={handleDeleteUser} currentUser={user} />}
+      {activeTab === 'Bookings' && <BookingsTab  darkMode={isDarkMode} bookings={allBookings} onDeleteBooking={handleDeleteBooking} />}
       
       {/* Modals */}
       <MovieModal 
@@ -1043,22 +827,6 @@ const AdminDashboard = ({ user }) => {
         isOpen={isViewModalOpen} 
         onClose={() => { setIsViewModalOpen(false); setViewingMovie(null); }} 
         movie={viewingMovie}
-      />
-      <UserModal 
-        darkMode={isDarkMode} 
-        isOpen={isUserModalOpen} 
-        onClose={() => { setIsUserModalOpen(false); setEditingUser(null); }} 
-        onSubmit={handleUserModalSubmit} 
-        user={editingUser}
-        isEdit={!!editingUser}
-      />
-      <BookingModal 
-        darkMode={isDarkMode} 
-        isOpen={isBookingModalOpen} 
-        onClose={() => { setIsBookingModalOpen(false); setEditingBooking(null); }} 
-        onSubmit={handleBookingModalSubmit} 
-        booking={editingBooking}
-        isEdit={!!editingBooking}
       />
     </div>
   );

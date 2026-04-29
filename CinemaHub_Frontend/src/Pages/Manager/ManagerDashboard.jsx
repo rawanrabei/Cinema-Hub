@@ -254,17 +254,17 @@ const ManagerDashboard = () => {
     },
     {
       title: "Confirmed",
-      value: bookings.filter((b) => b.status === "confirmed").length,
+      value: bookings.filter((b) => b.status === "CONFIRMED" || b.status === "confirmed").length,
       icon: <CheckCircle className="text-green-500" />,
     },
     {
       title: "Pending",
-      value: bookings.filter((b) => b.status === "pending").length,
+      value: bookings.filter((b) => b.status === "PENDING" || b.status === "pending").length,
       icon: <Clock className="text-orange-500" />,
     },
     {
       title: "Revenue Today",
-      value: `$${bookings.filter((b) => b.status !== "cancelled").reduce((acc, curr) => acc + curr.price, 0)}`,
+      value: `$${bookings.filter((b) => b.status !== "CANCELLED" && b.status !== "cancelled").reduce((acc, curr) => acc + (curr.price || 0), 0)}`,
       icon: <DollarSign className="text-emerald-600" />,
     },
   ];

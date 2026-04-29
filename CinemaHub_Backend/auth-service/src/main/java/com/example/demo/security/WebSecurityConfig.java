@@ -60,7 +60,10 @@ public class WebSecurityConfig {
                 auth
                     .requestMatchers("/register", "/login", "/welcome").permitAll()
                     .requestMatchers("/api/v1/auth/**", "/api/v1/welcome").permitAll()
-                    .requestMatchers("/api/auth/**").permitAll()
+                    .requestMatchers("/api/auth/register", "/api/auth/login").permitAll()
+                    .requestMatchers("/api/auth/logout").permitAll()
+                    .requestMatchers("/api/auth/users").permitAll()
+                    .requestMatchers("/api/auth/profile").authenticated()
                     .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                     .requestMatchers("/api/v1/manager/**").hasAnyRole("ADMIN", "MANAGER")
                     .requestMatchers("/api/v1/user/**").hasAnyRole("ADMIN", "MANAGER", "USER")

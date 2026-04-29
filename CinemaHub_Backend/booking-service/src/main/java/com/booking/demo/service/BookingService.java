@@ -164,14 +164,18 @@ public class BookingService {
                     .toList();
 
             double totalPrice = 0;
+            List<Long> validSeatIds = new ArrayList<>();
 
             for (Long seatId : seatIds) {
-                Seat seat = seatRepository.findById(seatId)
-                        .orElseThrow();
-                totalPrice += getSeatPrice(seat.getType());
+                Optional<Seat> seatOpt = seatRepository.findById(seatId);
+                if (seatOpt.isPresent()) {
+                    totalPrice += getSeatPrice(seatOpt.get().getType());
+                    validSeatIds.add(seatId);
+                }
+                // Skip seats that don't exist (they may have been deleted during seat regeneration)
             }
 
-            responses.add(mapToResponse(booking, seatIds, totalPrice));
+            responses.add(mapToResponse(booking, validSeatIds, totalPrice));
         }
 
         return responses;

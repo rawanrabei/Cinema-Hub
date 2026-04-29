@@ -107,4 +107,12 @@ public class AuthenticationController {
         SecurityContextHolder.clearContext();
         return "User logged out successfully!";
     }
+
+    @GetMapping("/users")
+    public java.util.List<User> getAllUsers() {
+        java.util.List<User> users = userRepository.findAll();
+        // Don't return passwords in response
+        users.forEach(user -> user.setPassword(null));
+        return users;
+    }
 }

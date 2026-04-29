@@ -144,11 +144,6 @@ services:
       - "8080:8080"
     environment:
       - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka-server:8761/eureka/
-    extra_hosts:
-      - "auth-service:172.18.0.9"
-      - "movie-service:172.18.0.6"
-      - "booking-service:172.18.0.7"
-      - "payment-service:172.18.0.8"
     networks:
       - cinema-network
     depends_on:

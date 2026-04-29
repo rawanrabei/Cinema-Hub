@@ -52,7 +52,15 @@ public class JwtUtil {
     public List<String> extractRoles(String token) {
         Claims claims = extractAllClaims(token);
         Object roles = claims.get("roles");
-        return roles instanceof List<?> ? (List<String>) roles : List.of();
+        if (roles instanceof List<?> roleList) {
+            return (List<String>) roleList;
+        }
+        // Handle single "role" claim from auth-service
+        Object role = claims.get("role");
+        if (role instanceof String) {
+            return List.of((String) role);
+        }
+        return List.of();
     }
 
     public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
