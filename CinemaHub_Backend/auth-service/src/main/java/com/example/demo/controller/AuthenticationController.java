@@ -56,7 +56,7 @@ public class AuthenticationController {
             throw new RuntimeException("User not found");
         }
         
-        String token = jwtUtils.generateToken(userDetails.getUsername(), dbUser.getRole().toString());
+        String token = jwtUtils.generateToken(userDetails.getUsername(), dbUser.getRole().toString(), dbUser.getId());
 
         // Send user logged in event to Kafka
         authProducer.sendUserLoggedInEvent(user);

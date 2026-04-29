@@ -42,17 +42,19 @@ class BookingControllerTest {
         bookingRequest = new BookingRequest();
         bookingRequest.setUserId(1L);
         bookingRequest.setShowtimeId(1L);
-        bookingRequest.setSeatIds(Arrays.asList(1L, 2L, 3L));
+        bookingRequest.setMovieId(1L);
+        bookingRequest.setSeatNumbers(Arrays.asList("A1", "A2", "A3"));
 
         bookingResponse = new BookingResponse();
         bookingResponse.setBookingId(1L);
         bookingResponse.setUserId(1L);
         bookingResponse.setShowtimeId(1L);
+        bookingResponse.setMovieId(1L);
     }
 
     @Test
     void testCreateBooking_Success() throws Exception {
-        when(bookingService.createBooking(any(), any(), any())).thenReturn(bookingResponse);
+        when(bookingService.createBooking(any(), any(), any(), any())).thenReturn(bookingResponse);
 
         mockMvc.perform(post("/bookings")
                 .contentType(MediaType.APPLICATION_JSON)

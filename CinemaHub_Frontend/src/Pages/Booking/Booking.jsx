@@ -43,10 +43,27 @@ const Booking = () => {
     setError("");
 
     try {
+      // Fetch user profile to get numeric ID if current user.id is not a number
+      let userId = user.id;
+      if (typeof userId === 'string' && isNaN(parseInt(userId))) {
+        const profileResponse = await fetch(`${API_BASE_URL}/api/auth/profile`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        if (profileResponse.ok) {
+          const profileData = await profileResponse.json();
+          userId = profileData.id;
+        } else {
+          throw new Error("Failed to fetch user profile");
+        }
+      }
+
       const bookingRequest = {
-        userId: user.id,
-        showtimeId: bookingData.showtime?.id || 1, // Default to 1 if not available
-        seatIds: bookingData.seats || [1, 2, 3], // Default seats if not available
+        userId: userId,
+        showtimeId: bookingData.showtime?.id || 1,
+        movieId: bookingData.movie?.id || 1,
+        seatNumbers: bookingData.seats || ["A1", "A2", "A3"],
       };
 
       const response = await fetch(`${API_BASE_URL}/api/bookings`, {

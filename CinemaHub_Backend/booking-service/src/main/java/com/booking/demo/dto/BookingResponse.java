@@ -8,6 +8,7 @@ public class BookingResponse {
     private Long bookingId;
     private Long userId;
     private Long showtimeId;
+    private Long movieId;
     private String status;
     private LocalDateTime bookingTime;
     private List<Long> seatIds;
@@ -18,6 +19,7 @@ public class BookingResponse {
     public BookingResponse(Long bookingId,
                            Long userId,
                            Long showtimeId,
+                           Long movieId,
                            String status,
                            LocalDateTime bookingTime,
                            List<Long> seatIds,
@@ -25,6 +27,7 @@ public class BookingResponse {
         this.bookingId = bookingId;
         this.userId = userId;
         this.showtimeId = showtimeId;
+        this.movieId = movieId;
         this.status = status;
         this.bookingTime = bookingTime;
         this.seatIds = seatIds;
@@ -53,6 +56,14 @@ public class BookingResponse {
 
     public void setShowtimeId(Long showtimeId) {
         this.showtimeId = showtimeId;
+    }
+
+    public Long getMovieId() {
+        return movieId;
+    }
+
+    public void setMovieId(Long movieId) {
+        this.movieId = movieId;
     }
 
     public String getStatus() {

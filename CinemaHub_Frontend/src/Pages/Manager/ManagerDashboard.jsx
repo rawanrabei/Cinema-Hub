@@ -32,35 +32,8 @@ const ManagerDashboard = () => {
   const [movies, setMovies] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  const [bookings, setBookings] = useState([
-    {
-      id: "BK001",
-      name: "John Doe",
-      movie: "Shadow Operative",
-      time: "2:00 PM",
-      seats: "A5, A6",
-      price: 36,
-      status: "pending",
-    },
-    {
-      id: "BK002",
-      name: "Jane Smith",
-      movie: "Eternal Love",
-      time: "4:30 PM",
-      seats: "D8, D9",
-      price: 40,
-      status: "confirmed",
-    },
-    {
-      id: "BK003",
-      name: "Bob Wilson",
-      movie: "The Haunting",
-      time: "7:00 PM",
-      seats: "F5",
-      price: 18,
-      status: "pending",
-    },
-  ]);
+  const [bookings, setBookings] = useState([]);
+  const [loadingBookings, setLoadingBookings] = useState(false);
 
   const [newMovie, setNewMovie] = useState({
     title: "",
@@ -121,16 +94,66 @@ const ManagerDashboard = () => {
     }
   }, [editingMovieId, movies]);
 
-  const handleConfirm = (id) => {
+  // Fetch all bookings from backend
+  useEffect(() => {
+    fetchBookings();
+  }, []);
+
+  const fetchBookings = async () => {
+    setLoadingBookings(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/bookings`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        // Transform backend response to frontend format
+        const transformedBookings = data.map(booking => ({
+          id: booking.bookingId,
+          name: `User ${booking.userId}`, // Will need to fetch user details
+          movie: `Showtime ${booking.showtimeId}`, // Will need to fetch movie details
+          time: booking.bookingTime ? booking.bookingTime.split('T')[1]?.substring(0, 5) : 'N/A',
+          seats: booking.seatIds ? booking.seatIds.join(', ') : 'N/A',
+          price: booking.totalPrice || 0,
+          status: booking.status || 'pending',
+        }));
+        setBookings(transformedBookings);
+      }
+    } catch (error) {
+      console.error('Error fetching bookings:', error);
+    } finally {
+      setLoadingBookings(false);
+    }
+  };
+
+  const handleConfirm = async (id) => {
+    // For now, just update local state
+    // In a real implementation, this would call an API to confirm the booking
     setBookings((prev) =>
       prev.map((bk) => (bk.id === id ? { ...bk, status: "confirmed" } : bk)),
     );
   };
 
-  const handleCancel = (id) => {
-    setBookings((prev) =>
-      prev.map((bk) => (bk.id === id ? { ...bk, status: "cancelled" } : bk)),
-    );
+  const handleCancel = async (id) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/bookings/${id}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      
+      if (response.ok) {
+        setBookings((prev) =>
+          prev.map((bk) => (bk.id === id ? { ...bk, status: "cancelled" } : bk)),
+        );
+      }
+    } catch (error) {
+      console.error('Error cancelling booking:', error);
+    }
   };
 
   const handleEditClick = (movie) => {

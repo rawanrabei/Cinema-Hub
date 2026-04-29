@@ -6,6 +6,7 @@ import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import jakarta.annotation.PostConstruct;
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -17,16 +18,19 @@ public class JwtUtil {
     @Value("${jwt.secret}")
     private String secret;
 
-    private SecretKey getSigningKey() {
-        return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+    private SecretKey key;
+
+    @PostConstruct
+    public void init() {
+        this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
     }
 
     public Claims extractAllClaims(String token) {
-        return Jwts.parser()
-                .verifyWith(getSigningKey())
+        return Jwts.parserBuilder()
+                .setSigningKey(key)
                 .build()
-                .parseSignedClaims(token)
-                .getPayload();
+                .parseClaimsJws(token)
+                .getBody();
     }
 
     public String extractUsername(String token) {
@@ -51,8 +55,14 @@ public class JwtUtil {
     @SuppressWarnings("unchecked")
     public List<String> extractRoles(String token) {
         Claims claims = extractAllClaims(token);
-        Object roles = claims.get("roles");
-        return roles instanceof List<?> ? (List<String>) roles : List.of();
+        Object role = claims.get("role");
+        if (role instanceof String) {
+            return List.of((String) role);
+        }
+        if (role instanceof List) {
+            return (List<String>) role;
+        }
+        return List.of();
     }
 
     public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {

@@ -13,6 +13,7 @@ public class Booking {
 
     private Long userId;
     private Long showtimeId;
+    private Long movieId;
     private String status;
     private LocalDateTime bookingTime;
 
@@ -23,6 +24,9 @@ public class Booking {
 
     public Long getShowtimeId() { return showtimeId; }
     public void setShowtimeId(Long showtimeId) { this.showtimeId = showtimeId; }
+
+    public Long getMovieId() { return movieId; }
+    public void setMovieId(Long movieId) { this.movieId = movieId; }
 
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }

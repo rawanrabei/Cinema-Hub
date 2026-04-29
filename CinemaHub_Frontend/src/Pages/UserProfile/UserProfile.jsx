@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   FaCamera,
   FaTicketAlt,
@@ -30,7 +30,7 @@ const preferences = [
 
 const UserProfile = () => {
   const { isDarkMode, colors } = useTheme();
-  const { user, logout, fetchProfile } = useAuth();
+  const { user, logout, fetchProfile, token } = useAuth();
   const navigate = useNavigate();
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
   const [isMembershipOpen, setIsMembershipOpen] = useState(false);
@@ -47,45 +47,73 @@ const UserProfile = () => {
     renewalDate: "Mar 12, 2026",
     benefits: "Lounge + Priority",
   });
-  const [bookings, setBookings] = useState([
-    {
-      id: "BK001",
-      movie: "Shadow Operative",
-      cinema: "Grand Cinema Downtown",
-      date: "2025-10-15",
-      time: "6:30 PM",
-      seats: ["D5", "D6"],
-      price: 36,
-      status: "confirmed",
-    },
-    {
-      id: "BK002",
-      movie: "Eternal Love",
-      cinema: "Luxury Cinema Mall",
-      date: "2025-10-21",
-      time: "4:15 PM",
-      seats: ["VIP A2"],
-      price: 18,
-      status: "confirmed",
-    },
-    {
-      id: "BK003",
-      movie: "The Haunting",
-      cinema: "IMAX City Center",
-      date: "2025-10-28",
-      time: "8:00 PM",
-      seats: ["F12", "F13", "F14"],
-      price: 54,
-      status: "confirmed",
-    },
-  ]);
+  const [bookings, setBookings] = useState([]);
+  const [loadingBookings, setLoadingBookings] = useState(false);
+
+  const API_BASE_URL = "http://localhost:8080";
+
+  const fetchUserBookings = useCallback(async () => {
+    if (!user?.id || !token) return;
+    
+    setLoadingBookings(true);
+    try {
+      const userId = typeof user.id === 'string' ? parseInt(user.id) : user.id;
+      const response = await fetch(`${API_BASE_URL}/api/bookings/user/${userId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        // Transform backend response to frontend format
+        const transformedBookings = await Promise.all(data.map(async (booking) => {
+          let movieName = "Movie";
+          // Fetch movie details if movieId is available
+          if (booking.movieId) {
+            try {
+              const movieResponse = await fetch(`${API_BASE_URL}/api/movies/${booking.movieId}`, {
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                },
+              });
+              if (movieResponse.ok) {
+                const movieData = await movieResponse.json();
+                movieName = movieData.title || "Movie";
+              }
+            } catch (e) {
+              console.error('Error fetching movie:', e);
+            }
+          }
+          
+          return {
+            id: booking.bookingId,
+            movie: movieName,
+            cinema: "Cinema", // Will need to fetch cinema details from showtime
+            date: booking.bookingTime ? booking.bookingTime.split('T')[0] : 'N/A',
+            time: booking.bookingTime ? booking.bookingTime.split('T')[1]?.substring(0, 5) : 'N/A',
+            seats: booking.seatIds || [],
+            price: booking.totalPrice || 0,
+            status: booking.status || 'confirmed',
+          };
+        }));
+        // Filter out cancelled bookings
+        setBookings(transformedBookings.filter(b => b.status !== 'CANCELLED'));
+      }
+    } catch (error) {
+      console.error('Error fetching bookings:', error);
+    } finally {
+      setLoadingBookings(false);
+    }
+  }, [user?.id, token]);
 
   // Fetch profile data from backend on mount
   useEffect(() => {
-    if (user) {
+    if (user && token) {
       fetchProfile();
+      fetchUserBookings();
     }
-  }, []);
+  }, [user, token, fetchProfile, fetchUserBookings]);
 
   // Update displayUser when user data changes
   useEffect(() => {
@@ -108,8 +136,22 @@ const UserProfile = () => {
   const mutedText = isDarkMode ? "text-gray-300" : "text-gray-500";
   const strongText = isDarkMode ? "text-white" : "text-gray-900";
 
-  const handleCancelBooking = (bookingId) => {
-    setBookings(bookings.filter(b => b.id !== bookingId));
+  const handleCancelBooking = async (bookingId) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/bookings/${bookingId}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      
+      if (response.ok) {
+        // Re-fetch bookings to get updated list
+        await fetchUserBookings();
+      }
+    } catch (error) {
+      console.error('Error cancelling booking:', error);
+    }
   };
 
   const handleLogout = () => {

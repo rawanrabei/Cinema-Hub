@@ -80,7 +80,7 @@ class AuthenticationControllerTest {
 
     @Test
     void testLoginUser_Success() throws Exception {
-        when(jwtUtils.generateToken(any(), any())).thenReturn("jwt-token");
+        when(jwtUtils.generateToken(any(), any(), any())).thenReturn("jwt-token");
 
         mockMvc.perform(post("/api/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)

@@ -7,12 +7,12 @@ import { FaCheckCircle, FaHome } from "react-icons/fa";
 
 const Confirmation = () => {
   const { isDarkMode, colors } = useTheme();
-  const { bookingData } = useBooking();
+  const { ticketData, snacksData, getSnacksTotal, getGrandTotal } = useBooking();
   const navigate = useNavigate();
 
   const calculateTotal = () => {
-    const ticketsTotal = bookingData?.ticketsTotal || 0;
-    const snacksTotal = bookingData?.snacksTotal || 0;
+    const ticketsTotal = ticketData?.ticketPrice || 0;
+    const snacksTotal = getSnacksTotal();
     return ticketsTotal + snacksTotal;
   };
 
@@ -38,8 +38,6 @@ const Confirmation = () => {
             Booking Summary
           </h2>
 
-         
-
           {/* Ticket Details */}
           <div className="mb-6 pb-6 border-b" style={{ borderColor: isDarkMode ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)" }}>
             <h4 className={`text-lg font-semibold mb-3 transition-colors duration-300 ${isDarkMode ? "text-white" : "text-gray-900"}`}>
@@ -47,15 +45,13 @@ const Confirmation = () => {
             </h4>
             <div className="flex justify-between items-center">
               <span className={`text-sm transition-colors duration-300 ${isDarkMode ? "text-gray-400" : "text-gray-600"}`}>
-                {bookingData?.seats?.length || 0}x Standard Ticket
+                {ticketData?.seats?.length || 0}x Standard Ticket
               </span>
               <span className={`font-semibold transition-colors duration-300`} style={{ color: colors.primary }}>
-                ${bookingData?.ticketsTotal?.toFixed(2) || "0.00"}
+                ${(ticketData?.ticketPrice || 0).toFixed(2)}
               </span>
             </div>
           </div>
-
-          
 
           {/* Total */}
           <div className="flex justify-between items-center mb-8">

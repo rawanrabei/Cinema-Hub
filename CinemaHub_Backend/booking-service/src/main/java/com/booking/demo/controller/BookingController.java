@@ -32,7 +32,8 @@ public class BookingController {
         BookingResponse booking = service.createBooking(
                 req.getUserId(),
                 req.getShowtimeId(),
-                req.getSeatIds()
+                req.getMovieId(),
+                req.getSeatNumbers()
         );
         bookingProducer.sendBookingCreatedEvent(booking);
         return booking;
@@ -42,6 +43,11 @@ public class BookingController {
     service.generateSeats(showtimeId);
     return "Seats generated successfully";
 }
+
+    @GetMapping
+    public List<BookingResponse> getAllBookings() {
+        return service.getAllBookings();
+    }
 
     @GetMapping("/{id}")
     public BookingResponse get(@PathVariable Long id) {

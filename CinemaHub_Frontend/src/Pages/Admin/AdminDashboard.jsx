@@ -26,12 +26,6 @@ const users = [
 
 const initialMovies = [];
 
-const bookings = [
-  { movie: 'Shadow Operative', customer: 'John Doe',  date: '2025-10-15', amount: '$36', status: 'confirmed' },
-  { movie: 'Eternal Love',     customer: 'Jane Smith', date: '2025-10-14', amount: '$40', status: 'confirmed' },
-  { movie: 'The Haunting',     customer: 'Bob Wilson', date: '2025-10-14', amount: '$32', status: 'pending'   },
-];
-
 const revenueData = [
   { month: 'Jul', value: 60 }, { month: 'Aug', value: 75 },
   { month: 'Sep', value: 55 }, { month: 'Oct', value: 90 },
@@ -60,7 +54,7 @@ const SearchBar = ({ value, onChange, placeholder, darkMode }) => (
 );
 
 // ── Tabs ───────────────────────────────────────────────
-const OverviewTab = ({ darkMode }) => (
+const OverviewTab = ({ darkMode, bookings }) => (
   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
     <div style={card(darkMode)}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
@@ -84,18 +78,22 @@ const OverviewTab = ({ darkMode }) => (
         <span style={{ fontWeight: '700', fontSize: '15px', color: darkMode ? '#fff' : '#111' }}>Recent Bookings</span>
       </div>
       <p style={{ fontSize: '12px', color: '#aaa', margin: '0 0 12px' }}>Latest booking activity</p>
-      {bookings.map((b, i) => (
-        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: i < bookings.length - 1 ? `1px solid ${darkMode ? '#333' : '#f5e8e8'}` : 'none' }}>
-          <div>
-            <p style={{ margin: 0, fontWeight: '600', fontSize: '13px', color: darkMode ? '#fff' : '#111' }}>{b.customer}</p>
-            <p style={{ margin: '2px 0 0', fontSize: '11px', color: '#aaa' }}>{b.movie}</p>
+      {bookings && bookings.length > 0 ? (
+        bookings.slice(0, 3).map((b, i) => (
+          <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: i < Math.min(bookings.length, 3) - 1 ? `1px solid ${darkMode ? '#333' : '#f5e8e8'}` : 'none' }}>
+            <div>
+              <p style={{ margin: 0, fontWeight: '600', fontSize: '13px', color: darkMode ? '#fff' : '#111' }}>{b.customer}</p>
+              <p style={{ margin: '2px 0 0', fontSize: '11px', color: '#aaa' }}>{b.movie}</p>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ color: darkMode ? '#3b82f6' : '#FF0800', fontWeight: '700', fontSize: '13px' }}>{b.amount}</span>
+              <span style={{ fontSize: '10px', fontWeight: '600', padding: '2px 8px', borderRadius: '99px', backgroundColor: b.status === 'confirmed' ? (darkMode ? '#3b82f6' : '#FF0800') : '#f5f5f5', color: b.status === 'confirmed' ? '#fff' : '#888' }}>{b.status}</span>
+            </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ color: darkMode ? '#3b82f6' : '#FF0800', fontWeight: '700', fontSize: '13px' }}>{b.amount}</span>
-            <span style={{ fontSize: '10px', fontWeight: '600', padding: '2px 8px', borderRadius: '99px', backgroundColor: b.status === 'confirmed' ? (darkMode ? '#3b82f6' : '#FF0800') : '#f5f5f5', color: b.status === 'confirmed' ? '#fff' : '#888' }}>{b.status}</span>
-          </div>
-        </div>
-      ))}
+        ))
+      ) : (
+        <p style={{ fontSize: '12px', color: '#aaa', textAlign: 'center', padding: '20px 0' }}>No recent bookings</p>
+      )}
     </div>
   </div>
 );
@@ -743,7 +741,8 @@ const AdminDashboard = ({ user }) => {
   const [allUsers, setAllUsers] = useState(users);
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
-  const [allBookings, setAllBookings] = useState(bookings);
+  const [allBookings, setAllBookings] = useState([]);
+  const [loadingBookings, setLoadingBookings] = useState(false);
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [editingBooking, setEditingBooking] = useState(null);
 
@@ -769,6 +768,38 @@ const AdminDashboard = ({ user }) => {
     };
 
     fetchMovies();
+  }, [token]);
+
+  // Fetch bookings from API
+  useEffect(() => {
+    const fetchBookings = async () => {
+      setLoadingBookings(true);
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/bookings`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        if (response.ok) {
+          const data = await response.json();
+          // Transform backend response to frontend format
+          const transformedBookings = data.map(booking => ({
+            movie: `Showtime ${booking.showtimeId}`, // Will need to fetch movie details
+            customer: `User ${booking.userId}`, // Will need to fetch user details
+            date: booking.bookingTime ? booking.bookingTime.split('T')[0] : 'N/A',
+            amount: `$${booking.totalPrice || 0}`,
+            status: booking.status || 'confirmed',
+          }));
+          setAllBookings(transformedBookings);
+        }
+      } catch (error) {
+        console.error('Error fetching bookings:', error);
+      } finally {
+        setLoadingBookings(false);
+      }
+    };
+
+    fetchBookings();
   }, [token]);
 
   const handleAddMovie = () => {
@@ -993,7 +1024,7 @@ const AdminDashboard = ({ user }) => {
       </div>
 
       {/* ── Tab Content ── */}
-      {activeTab === 'Overview' && <OverviewTab  darkMode={isDarkMode} />}
+      {activeTab === 'Overview' && <OverviewTab  darkMode={isDarkMode} bookings={allBookings} />}
       {activeTab === 'Movies'   && <MoviesTab    darkMode={isDarkMode} movies={movies} onAddMovie={handleAddMovie} onEditMovie={handleEditMovie} onDeleteMovie={handleDeleteMovie} onViewMovie={handleViewMovie} />}
       {activeTab === 'Users'    && <UsersTab     darkMode={isDarkMode} users={allUsers} onAddUser={handleAddUser} onEditUser={handleEditUser} onDeleteUser={handleDeleteUser} />}
       {activeTab === 'Bookings' && <BookingsTab  darkMode={isDarkMode} bookings={allBookings} onAddBooking={handleAddBooking} onEditBooking={handleEditBooking} onDeleteBooking={handleDeleteBooking} />}

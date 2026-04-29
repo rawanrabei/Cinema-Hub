@@ -249,7 +249,8 @@ const Movies = () => {
                 </p>
                 <div className="flex gap-3">
                   <Link
-                    to={`/login`}
+                    to={token ? `/movies/${movie.id}` : `/login`}
+                    state={token ? {} : { from: { pathname: `/movies/${movie.id}` } }}
                     onClick={() => {
                       window.scrollTo({ top: 0, behavior: "smooth" });
                     }}
@@ -272,8 +273,11 @@ const Movies = () => {
                   <button
                     onClick={(e) => {
                       e.preventDefault();
-                      
-                      navigate(`/login`);
+                      if (token) {
+                        navigate(`/movies/${movie.id}`);
+                      } else {
+                        navigate("/login", { state: { from: { pathname: `/movies/${movie.id}` } } });
+                      }
                     }}
                     className="flex-1 text-center px-4 py-2.5 rounded-full font-semibold text-white transition-all duration-300"
                     style={{

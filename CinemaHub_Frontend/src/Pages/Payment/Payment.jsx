@@ -10,7 +10,7 @@ const API_BASE_URL = "http://localhost:8080";
 
 const Payment = () => {
   const { isDarkMode, colors } = useTheme();
-  const { bookingData } = useBooking();
+  const { ticketData, snacksData, getSnacksTotal, getGrandTotal } = useBooking();
   const { token, user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -30,9 +30,25 @@ const Payment = () => {
     setError("");
 
     try {
+      // Fetch user profile to get numeric ID if current user.id is not a number
+      let userId = user?.id;
+      if (typeof userId === 'string' && isNaN(parseInt(userId))) {
+        const profileResponse = await fetch(`${API_BASE_URL}/api/auth/profile`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        if (profileResponse.ok) {
+          const profileData = await profileResponse.json();
+          userId = profileData.id;
+        } else {
+          throw new Error("Failed to fetch user profile");
+        }
+      }
+
       const paymentRequest = {
         bookingId: bookingId || 1,
-        userId: user?.id || 1,
+        userId: userId || 1,
         amount: amount || calculateTotal(),
         paymentMethod: selectedPayment === "card" ? "CREDIT_CARD" : "CASH",
       };
@@ -61,8 +77,8 @@ const Payment = () => {
   };
 
   const calculateTotal = () => {
-    const ticketsTotal = bookingData?.ticketsTotal || 0;
-    const snacksTotal = bookingData?.snacksTotal || 0;
+    const ticketsTotal = ticketData?.ticketPrice || 0;
+    const snacksTotal = getSnacksTotal();
     return ticketsTotal + snacksTotal;
   };
 
@@ -255,10 +271,10 @@ const Payment = () => {
                 </h4>
                 <div className="flex justify-between items-center">
                   <span className={`text-sm transition-colors duration-300 ${isDarkMode ? "text-gray-400" : "text-gray-600"}`}>
-                    {bookingData?.seats?.length || 0}x Standard Ticket
+                    {ticketData?.seats?.length || 0}x Standard Ticket
                   </span>
                   <span className={`font-semibold transition-colors duration-300`} style={{ color: colors.primary }}>
-                    ${bookingData?.ticketsTotal?.toFixed(2) || "0.00"}
+                    ${(ticketData?.ticketPrice || 0).toFixed(2)}
                   </span>
                 </div>
               </div>

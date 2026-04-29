@@ -4,7 +4,7 @@ import { FaStar, FaRegStar, FaStarHalfAlt } from "react-icons/fa";
 
 const MovieDetailsHeader = ({ movieData }) => {
   const backgroundStyle = {
-    backgroundImage: `url(${movieData.backgroundImg || "/placeholder-bg.jpg"})`,
+    backgroundImage: `url(${movieData.posterUrl || "/placeholder-bg.jpg"})`,
     backgroundSize: "cover",
     backgroundPosition: "center",
   };
@@ -56,7 +56,7 @@ const MovieDetailsHeader = ({ movieData }) => {
       </section>
       <section className="relative z-50 px-4 md:px-8 lg:ms-20 mt-[-60px] md:mt-0">
         <img
-          src={movieData.posterImg || "/placeholder-poster.jpg"}
+          src={movieData.posterUrl || "/placeholder-poster.jpg"}
           alt={movieData.title}
           className="w-40 md:w-56 lg:w-64 h-56 md:h-80 lg:h-96 object-cover rounded-lg shadow-xl border-4 absolute md:-translate-y-1/2"
         />

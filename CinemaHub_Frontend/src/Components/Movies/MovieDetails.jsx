@@ -4,19 +4,31 @@ import { useParams, useLocation } from "react-router-dom";
 import MovieDetailsHeader from "./MovieDetailsHeader";
 import MovieDetailsCast from "./MovieDetailsCast";
 import MovieDetailsBooking from "./MovieDetailsBooking";
-import moviesData from "../../data/moviesData";
 
 const MovieDetails = () => {
   const { id } = useParams();
   const location = useLocation();
   const [movieData, setMovieData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    const selectedMovie =
-      moviesData.find((movie) => movie.id === Number(id)) || moviesData[0];
-    setMovieData(selectedMovie);
-    setIsLoading(false);
+    const fetchMovieDetails = async () => {
+      try {
+        const response = await fetch(`http://localhost:8080/api/movies/${id}`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch movie details');
+        }
+        const data = await response.json();
+        setMovieData(data);
+        setIsLoading(false);
+      } catch (err) {
+        setError(err.message);
+        setIsLoading(false);
+      }
+    };
+
+    fetchMovieDetails();
   }, [id]);
 
   useEffect(() => {
@@ -30,8 +42,16 @@ const MovieDetails = () => {
     }
   }, [location.hash, isLoading, movieData]);
 
-  if (isLoading || !movieData) {
+  if (isLoading) {
     return <div className="text-center p-10 min-h-screen">Loading...</div>;
+  }
+
+  if (error) {
+    return <div className="text-center p-10 min-h-screen text-red-500">Error: {error}</div>;
+  }
+
+  if (!movieData) {
+    return <div className="text-center p-10 min-h-screen">Movie not found</div>;
   }
 
   return (

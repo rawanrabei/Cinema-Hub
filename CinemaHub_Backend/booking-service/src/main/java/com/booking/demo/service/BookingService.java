@@ -34,28 +34,39 @@ public class BookingService {
 
 
     @Transactional
-    public BookingResponse createBooking(Long userId, Long showtimeId, List<Long> seatIds) {
+    public BookingResponse createBooking(Long userId, Long showtimeId, Long movieId, List<String> seatNumbers) {
+        // Generate seats if they don't exist or if seat count is incorrect (should be 96 for 8 rows x 12 seats)
+        List<Seat> allSeats = seatRepository.findByShowtimeId(showtimeId);
+        if (allSeats.isEmpty() || allSeats.size() != 96) {
+            generateSeats(showtimeId);
+        }
+        
+        List<Seat> seats = seatRepository.findByShowtimeIdAndSeatNumberIn(showtimeId, seatNumbers);
+        
+        List<String> notFound = new ArrayList<>();
+        List<String> alreadyBooked = new ArrayList<>();
+        List<Long> seatIds = new ArrayList<>();
 
-        List<Long> notFound = new ArrayList<>();
-        List<Long> alreadyBooked = new ArrayList<>();
-
-        for (Long seatId : seatIds) {
-            Optional<Seat> seatOpt = seatRepository.findById(seatId);
+        for (String seatNumber : seatNumbers) {
+            Optional<Seat> seatOpt = seats.stream()
+                    .filter(s -> s.getSeatNumber().equals(seatNumber))
+                    .findFirst();
 
             if (seatOpt.isEmpty()) {
-                notFound.add(seatId);
+                notFound.add(seatNumber);
                 continue;
             }
 
             Seat seat = seatOpt.get();
 
             if (seat.isBooked()) {
-                alreadyBooked.add(seatId);
+                alreadyBooked.add(seatNumber);
                 continue;
             }
 
             seat.setBooked(true);
             seatRepository.save(seat);
+            seatIds.add(seat.getId());
         }
 
         if (!notFound.isEmpty()) {
@@ -69,19 +80,17 @@ public class BookingService {
         Booking booking = new Booking();
         booking.setUserId(userId);
         booking.setShowtimeId(showtimeId);
+        booking.setMovieId(movieId);
         booking.setStatus("CONFIRMED");
         booking.setBookingTime(LocalDateTime.now());
 
         Booking savedBooking = bookingRepository.save(booking);
 
         double totalPrice = 0;
-        List<Long> finalSeatIds = new ArrayList<>();
 
         for (Long seatId : seatIds) {
             Seat seat = seatRepository.findById(seatId)
                     .orElseThrow(() -> new RuntimeException("Seat not found"));
-
-            finalSeatIds.add(seatId);
             totalPrice += getSeatPrice(seat.getType());
         }
 
@@ -92,7 +101,7 @@ public class BookingService {
             bookedSeatRepository.save(bs);
         }
 
-        return mapToResponse(savedBooking, finalSeatIds, totalPrice);
+        return mapToResponse(savedBooking, seatIds, totalPrice);
     }
 
 
@@ -101,7 +110,7 @@ public class BookingService {
         Booking booking = bookingRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Booking not found"));
 
-        List<Long> seatIds = bookedSeatRepository.findById(id)
+        List<Long> seatIds = bookedSeatRepository.findByBookingId(id)
                 .stream()
                 .map(BookedSeat::getSeatId)
                 .toList();
@@ -118,38 +127,38 @@ public class BookingService {
     }
 
     public void generateSeats(Long showtimeId) {
+        // Delete existing seats for this showtime to avoid duplicates
+        seatRepository.deleteByShowtimeId(showtimeId);
 
-        char[] rows = {'A', 'B', 'C', 'D', 'E'};
+        char[] rows = {'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'};
 
         for (char row : rows) {
-        for (int i = 1; i <= 10; i++) {
+            for (int i = 1; i <= 12; i++) {
 
-            Seat seat = new Seat();
-            seat.setSeatNumber(row + String.valueOf(i));
-            seat.setShowtimeId(showtimeId);
-            seat.setBooked(false);
+                Seat seat = new Seat();
+                seat.setSeatNumber(row + String.valueOf(i));
+                seat.setShowtimeId(showtimeId);
+                seat.setBooked(false);
 
-            if (row == 'A' || row == 'B') {
-                seat.setType(SeatType.STANDARD);
-            } else if (row == 'C' || row == 'D') {
-                seat.setType(SeatType.VIP);
-            } else {
-                seat.setType(SeatType.RECLINER);
+                if (row == 'A' || row == 'B' || row == 'C' || row == 'D') {
+                    seat.setType(SeatType.STANDARD);
+                } else if (row == 'E' || row == 'F') {
+                    seat.setType(SeatType.VIP);
+                } else {
+                    seat.setType(SeatType.RECLINER);
+                }
+
+                seatRepository.save(seat);
             }
-
-            seatRepository.save(seat);
         }
     }
-}
 
-    public List<BookingResponse> getUserBookings(Long userId) {
-
-        List<Booking> bookings = bookingRepository.findByUserId(userId);
+    public List<BookingResponse> getAllBookings() {
+        List<Booking> bookings = bookingRepository.findAll();
         List<BookingResponse> responses = new ArrayList<>();
 
         for (Booking booking : bookings) {
-
-            List<Long> seatIds = bookedSeatRepository.findById(booking.getId())
+            List<Long> seatIds = bookedSeatRepository.findByBookingId(booking.getId())
                     .stream()
                     .map(BookedSeat::getSeatId)
                     .toList();
@@ -163,6 +172,36 @@ public class BookingService {
             }
 
             responses.add(mapToResponse(booking, seatIds, totalPrice));
+        }
+
+        return responses;
+    }
+
+    public List<BookingResponse> getUserBookings(Long userId) {
+
+        List<Booking> bookings = bookingRepository.findByUserId(userId);
+        List<BookingResponse> responses = new ArrayList<>();
+
+        for (Booking booking : bookings) {
+
+            List<Long> seatIds = bookedSeatRepository.findByBookingId(booking.getId())
+                    .stream()
+                    .map(BookedSeat::getSeatId)
+                    .toList();
+
+            double totalPrice = 0;
+            List<Long> validSeatIds = new ArrayList<>();
+
+            for (Long seatId : seatIds) {
+                Optional<Seat> seatOpt = seatRepository.findById(seatId);
+                if (seatOpt.isPresent()) {
+                    totalPrice += getSeatPrice(seatOpt.get().getType());
+                    validSeatIds.add(seatId);
+                }
+                // Skip seats that don't exist (they may have been deleted during seat regeneration)
+            }
+
+            responses.add(mapToResponse(booking, validSeatIds, totalPrice));
         }
 
         return responses;
@@ -194,6 +233,7 @@ public class BookingService {
         response.setBookingId(booking.getId());
         response.setUserId(booking.getUserId());
         response.setShowtimeId(booking.getShowtimeId());
+        response.setMovieId(booking.getMovieId());
         response.setStatus(booking.getStatus());
         response.setBookingTime(booking.getBookingTime());
         response.setSeatIds(seatIds);
