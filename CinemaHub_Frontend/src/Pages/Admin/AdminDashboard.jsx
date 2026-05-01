@@ -17,7 +17,7 @@ const getStats = (isDarkMode, bookings, movies, users) => {
   }, 0);
   
   const totalBookings = bookings.length;
-  const activeMovies = movies.filter(m => m.status === 'APPROVED').length;
+  const activeMovies = movies.filter(m => m.status === 'Active').length;
   const totalCustomers = users.filter(u => u.role === 'USER' || u.role === 'user').length;
   
   // Today's bookings
@@ -128,7 +128,7 @@ const OverviewTab = ({ darkMode, bookings }) => (
   </div>
 );
 
-const MoviesTab = ({ darkMode, movies, onEditMovie, onDeleteMovie, onViewMovie, onApproveMovie, onRejectMovie }) => {
+const MoviesTab = ({ darkMode, movies, onEditMovie, onDeleteMovie, onViewMovie }) => {
   const [search, setSearch] = useState('');
   const filtered = movies.filter(m => m.title.toLowerCase().includes(search.toLowerCase()));
   return (
@@ -150,13 +150,7 @@ const MoviesTab = ({ darkMode, movies, onEditMovie, onDeleteMovie, onViewMovie, 
             <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#aaa' }}>Duration: {m.duration}min &nbsp; Rating: {m.rating} &nbsp; Price: ${m.amount}</p>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span style={{ fontSize: '11px', fontWeight: '600', padding: '3px 10px', borderRadius: '99px', backgroundColor: m.status === 'APPROVED' ? '#dcfce7' : m.status === 'PENDING' ? '#fef3c7' : '#fee2e2', color: m.status === 'APPROVED' ? '#16a34a' : m.status === 'PENDING' ? '#d97706' : '#dc2626' }}>{m.status}</span>
-            {m.status === 'PENDING' && (
-              <>
-                <button onClick={() => onApproveMovie(m.id)} style={{ padding: '4px 10px', borderRadius: '6px', border: 'none', backgroundColor: '#22c55e', color: '#fff', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>Accept</button>
-                <button onClick={() => onRejectMovie(m.id)} style={{ padding: '4px 10px', borderRadius: '6px', border: 'none', backgroundColor: '#ef4444', color: '#fff', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>Reject</button>
-              </>
-            )}
+            <span style={{ fontSize: '11px', fontWeight: '600', padding: '3px 10px', borderRadius: '99px', backgroundColor: m.status === 'Active' ? (darkMode ? '#3b82f6' : '#FF0800') : '#f5f5f5', color: m.status === 'Active' ? '#fff' : '#888' }}>{m.status}</span>
             <Eye size={15} color="#aaa" style={{ cursor: 'pointer' }} onClick={() => onViewMovie(m)} />
             <Pencil size={15} color="#aaa" style={{ cursor: 'pointer' }} onClick={() => onEditMovie(m)} />
             <Trash2 size={15} color="#aaa" style={{ cursor: 'pointer' }} onClick={() => onDeleteMovie(m.id)} />
@@ -660,40 +654,6 @@ const AdminDashboard = ({ user }) => {
     }
   };
 
-  const handleApproveMovie = async (movieId) => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/movies/${movieId}/approve`, {
-        method: 'PUT',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      if (response.ok) {
-        const updatedMovie = await response.json();
-        setMovies(movies.map(m => m.id === movieId ? updatedMovie : m));
-      }
-    } catch (error) {
-      console.error('Error approving movie:', error);
-    }
-  };
-
-  const handleRejectMovie = async (movieId) => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/movies/${movieId}/reject`, {
-        method: 'PUT',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      if (response.ok) {
-        const updatedMovie = await response.json();
-        setMovies(movies.map(m => m.id === movieId ? updatedMovie : m));
-      }
-    } catch (error) {
-      console.error('Error rejecting movie:', error);
-    }
-  };
-
   const handleViewMovie = (movie) => {
     setViewingMovie(movie);
     setIsViewModalOpen(true);
@@ -849,7 +809,7 @@ const AdminDashboard = ({ user }) => {
 
       {/* ── Tab Content ── */}
       {activeTab === 'Overview' && <OverviewTab  darkMode={isDarkMode} bookings={allBookings} />}
-      {activeTab === 'Movies'   && <MoviesTab    darkMode={isDarkMode} movies={movies} onAddMovie={handleAddMovie} onEditMovie={handleEditMovie} onDeleteMovie={handleDeleteMovie} onViewMovie={handleViewMovie} onApproveMovie={handleApproveMovie} onRejectMovie={handleRejectMovie} />}
+      {activeTab === 'Movies'   && <MoviesTab    darkMode={isDarkMode} movies={movies} onAddMovie={handleAddMovie} onEditMovie={handleEditMovie} onDeleteMovie={handleDeleteMovie} onViewMovie={handleViewMovie} />}
       {activeTab === 'Users'    && <UsersTab     darkMode={isDarkMode} users={allUsers} onDeleteUser={handleDeleteUser} currentUser={user} />}
       {activeTab === 'Bookings' && <BookingsTab  darkMode={isDarkMode} bookings={allBookings} onDeleteBooking={handleDeleteBooking} />}
       
