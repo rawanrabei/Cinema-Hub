@@ -21,7 +21,7 @@ const Movies = () => {
   useEffect(() => {
     const fetchMovies = async () => {
       try {
-        const response = await fetch(`${API_BASE_URL}/api/movies`, {
+        const response = await fetch(`${API_BASE_URL}/api/movies/approved`, {
           headers: {
             ...(token && { Authorization: `Bearer ${token}` }),
           },

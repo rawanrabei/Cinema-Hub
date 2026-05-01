@@ -52,4 +52,28 @@ public class MovieController {
         movieService.deleteMovie(id);
         movieProducer.sendMovieDeletedEvent(id);
     }
+
+    //Admin approve movie
+    @PutMapping("/{id}/approve")
+    public Movie approveMovie(@PathVariable Long id) {
+        return movieService.updateMovieStatus(id, Movie.Status.APPROVED);
+    }
+
+    //Admin reject movie
+    @PutMapping("/{id}/reject")
+    public Movie rejectMovie(@PathVariable Long id) {
+        return movieService.updateMovieStatus(id, Movie.Status.REJECTED);
+    }
+
+    //Admin view pending movies
+    @GetMapping("/pending")
+    public List<Movie> getPendingMovies() {
+        return movieService.getMoviesByStatus(Movie.Status.PENDING);
+    }
+
+    //View approved movies only
+    @GetMapping("/approved")
+    public List<Movie> getApprovedMovies() {
+        return movieService.getMoviesByStatus(Movie.Status.APPROVED);
+    }
 }

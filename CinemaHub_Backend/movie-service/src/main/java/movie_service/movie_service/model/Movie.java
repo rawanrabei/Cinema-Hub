@@ -26,12 +26,13 @@ public class Movie {
     private String language;
 
     public enum Status{
-        Active,
-        InActive
+        PENDING,
+        APPROVED,
+        REJECTED
     }
 
     @Enumerated(EnumType.STRING)
-    private Status status;
+    private Status status = Status.PENDING;
 
     @ElementCollection
     private List<String> genres;

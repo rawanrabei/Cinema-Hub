@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useLocation } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
 
 import MovieDetailsHeader from "./MovieDetailsHeader";
 import MovieDetailsCast from "./MovieDetailsCast";
@@ -8,6 +9,7 @@ import MovieDetailsBooking from "./MovieDetailsBooking";
 const MovieDetails = () => {
   const { id } = useParams();
   const location = useLocation();
+  const { token } = useAuth();
   const [movieData, setMovieData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -15,7 +17,11 @@ const MovieDetails = () => {
   useEffect(() => {
     const fetchMovieDetails = async () => {
       try {
-        const response = await fetch(`http://localhost:8080/api/movies/${id}`);
+        const response = await fetch(`http://localhost:8080/api/movies/${id}`, {
+          headers: {
+            ...(token && { Authorization: `Bearer ${token}` }),
+          },
+        });
         if (!response.ok) {
           throw new Error('Failed to fetch movie details');
         }
@@ -29,7 +35,7 @@ const MovieDetails = () => {
     };
 
     fetchMovieDetails();
-  }, [id]);
+  }, [id, token]);
 
   useEffect(() => {
     if (location.hash === "#booking" && !isLoading && movieData) {

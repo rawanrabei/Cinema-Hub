@@ -54,5 +54,17 @@ public class MovieService {
     public void deleteMovie(Long id) {
         movieRepository.deleteById(id);
     }
-    
+
+    //Update Movie Status
+    public Movie updateMovieStatus(Long id, Movie.Status status) {
+        Movie movie = getMovieById(id);
+        movie.setStatus(status);
+        return movieRepository.save(movie);
+    }
+
+    //Get Movies by Status
+    public List<Movie> getMoviesByStatus(Movie.Status status) {
+        return movieRepository.findByStatus(status);
+    }
+
 }
