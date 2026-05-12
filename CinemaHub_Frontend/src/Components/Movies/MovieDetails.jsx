@@ -15,7 +15,7 @@ const MovieDetails = () => {
   useEffect(() => {
     const fetchMovieDetails = async () => {
       try {
-        const response = await fetch(`http://localhost:8080/api/movies/${id}`);
+        const response = await fetch(`http://localhost:18080/api/movies/${id}`);
         if (!response.ok) {
           throw new Error('Failed to fetch movie details');
         }

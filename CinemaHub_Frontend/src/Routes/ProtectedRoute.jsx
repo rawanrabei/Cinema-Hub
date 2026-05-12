@@ -6,6 +6,11 @@ const ProtectedRoute = ({ allowedRoles = [] }) => {
   const { user, hasRole } = useAuth();
   const location = useLocation();
 
+  // Allow access to home page without authentication
+  if (location.pathname === '/home') {
+    return <Outlet />;
+  }
+
   if (!user) {
     return (
       <Navigate

@@ -17,13 +17,17 @@ import {
   FaSun,
   FaMoon,
   FaTachometerAlt,
+  FaBell,
 } from "react-icons/fa";
 import { Clapperboard } from "lucide-react";
+import { getNotificationsPath } from "../../Pages/Auth/components/auth.constants";
+import { useNotifications } from "../../context/NotificationsContext";
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { isDarkMode, toggleTheme, colors } = useTheme();
   const { user } = useAuth();
+  const { unreadCount } = useNotifications();
   const [searchQuery, setSearchQuery] = useState("");
   const location = useLocation();
 
@@ -130,6 +134,34 @@ const Header = () => {
           </nav>
 
           <div className="flex items-center gap-3">
+            {user && (
+              <Link
+                to={getNotificationsPath(user.role)}
+                className={`hidden md:flex relative p-2 rounded-lg transition-all text-sm ${textSecondary}`}
+                title="Notifications"
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = colors.primary;
+                  e.currentTarget.style.backgroundColor = isDarkMode
+                    ? "rgba(255,255,255,0.1)"
+                    : "rgba(0,0,0,0.05)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = "";
+                  e.currentTarget.style.backgroundColor = "transparent";
+                }}
+              >
+                <FaBell />
+                {unreadCount > 0 && (
+                  <span
+                    className="absolute -top-0.5 -right-0.5 min-w-[1.1rem] h-[1.1rem] px-1 flex items-center justify-center rounded-full text-[10px] font-bold text-white"
+                    style={{ backgroundColor: colors.primary }}
+                  >
+                    {unreadCount > 99 ? "99+" : unreadCount}
+                  </span>
+                )}
+              </Link>
+            )}
+
             <div className="hidden md:flex items-center gap-1.5">
               <Link
                 to="/about"
@@ -402,6 +434,33 @@ const Header = () => {
                   {isDarkMode ? <FaSun /> : <FaMoon />}
                 </button>
               </div>
+
+              {user && (
+                <Link
+                  to={getNotificationsPath(user.role)}
+                  onClick={() => setIsMenuOpen(false)}
+                  className={`flex items-center gap-2 px-4 py-2.5 text-sm border rounded-lg transition-all mt-2 ${textColor}`}
+                  style={{
+                    backgroundColor: isDarkMode
+                      ? "rgba(255,255,255,0.1)"
+                      : "rgba(0,0,0,0.05)",
+                    borderColor: isDarkMode
+                      ? "rgba(255,255,255,0.2)"
+                      : "rgba(0,0,0,0.1)",
+                  }}
+                >
+                  <FaBell style={{ color: colors.primary }} />
+                  <span>Notifications</span>
+                  {unreadCount > 0 && (
+                    <span
+                      className="ml-auto text-xs font-bold px-2 py-0.5 rounded-full text-white"
+                      style={{ backgroundColor: colors.primary }}
+                    >
+                      {unreadCount > 99 ? "99+" : unreadCount}
+                    </span>
+                  )}
+                </Link>
+              )}
 
               {isAdminOrManager && dashboardPath && (
                 <Link

@@ -26,3 +26,11 @@ export const getRoleFromQuery = (searchParams, fallbackRole = "member") => {
 
 export const getRoleRedirect = (role) =>
   ROLE_CONFIG[role]?.loginPath || FALLBACK_AUTH_PATH;
+
+/** In-app notifications route for the signed-in role */
+export const getNotificationsPath = (role) => {
+  if (role === "admin") return "/admin/notifications";
+  if (role === "manager") return "/manager/notifications";
+  if (role === "member" || role === "user") return "/user/notifications";
+  return "/home";
+};

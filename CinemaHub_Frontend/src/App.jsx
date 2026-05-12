@@ -102,17 +102,18 @@ function App() {
           </Route>
         </Route>
         {/* ------------------------- Member--------------------------------- */}
-        <Route element={<ProtectedRoute allowedRoles={["member"]} />}>
-          <Route path="/user" element={<UserProfile />}>
-            <Route index element={<MemberDashboard />} />
-            <Route path="requests" element={<ViewRequests />} />
-            <Route path="projects" element={<MemberProjects />}>
+        <Route element={<ProtectedRoute />}>
+          <Route path="/user-profile" element={<UserProfile />} />
+          <Route element={<MemberLayout />}>
+            <Route path="/user/notifications" element={<Notifications />} />
+            <Route path="/user/settings" element={<MemberSettings />} />
+            <Route path="/user" element={<MemberDashboard />} />
+            <Route path="/user/requests" element={<ViewRequests />} />
+            <Route path="/user/projects" element={<MemberProjects />}>
               {/* <Route path=":projectId" element={<ManageProject />}>
                 <Route path="tasks/:taskId" element={<MemberTaskDetails />} />
               </Route> */}
             </Route>
-            <Route path="notifications" element={<Notifications />} />
-            <Route path="settings" element={<MemberSettings />} />
           </Route>
         </Route>
 

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useTheme } from "../../../context/ThemeContext";
 import { useAuth } from "../../../context/AuthContext";
+import { useNotifications } from "../../../context/NotificationsContext";
 import AuthPanel from "../components/AuthPanel";
 import AuthInput from "../components/AuthInput";
 import { getRoleRedirect } from "../components/auth.constants";
@@ -9,6 +10,7 @@ import { getRoleRedirect } from "../components/auth.constants";
 const Login = () => {
   const { isDarkMode, colors } = useTheme();
   const { login, isLoading } = useAuth();
+  const { append } = useNotifications();
   const navigate = useNavigate();
   const location = useLocation();
   const [email, setEmail] = useState("");
@@ -20,6 +22,15 @@ const Login = () => {
     setError("");
     try {
       const loggedInUser = await login({ email, password });
+      
+      // Show login notification
+      append({
+        topic: "user-logged-in",
+        title: `Welcome back, ${loggedInUser.name}!`,
+        timestamp: new Date().toISOString(),
+        payload: null,
+      });
+      
       const fromPath = location.state?.from?.pathname;
       const targetPath =
         loggedInUser.role === "member" && fromPath

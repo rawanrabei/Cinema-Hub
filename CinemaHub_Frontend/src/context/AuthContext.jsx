@@ -6,13 +6,13 @@ import {
   useMemo,
   useState,
 } from "react";
+import { API_BASE_URL } from "../config/api";
 
 const AuthContext = createContext(null);
 const ROLES = ["ADMIN", "MANAGER", "USER"];
 const DEFAULT_ROLE = "USER";
 const TOKEN_KEY = "cinemaHub.auth.token";
 const USER_KEY = "cinemaHub.auth.user";
-const API_BASE_URL = "http://localhost:8080";
 
 const parseStorage = (key, fallback) => {
   try {

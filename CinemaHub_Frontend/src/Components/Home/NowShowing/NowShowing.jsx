@@ -4,7 +4,7 @@ import { FaStar, FaClock } from "react-icons/fa";
 import { useTheme } from "../../../context/ThemeContext";
 import { useAuth } from "../../../context/AuthContext";
 
-const API_BASE_URL = "http://localhost:8080";
+const API_BASE_URL = "http://localhost:18080";
 
 const NowShowing = () => {
   const { isDarkMode, colors } = useTheme();

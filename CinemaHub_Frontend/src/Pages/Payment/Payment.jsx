@@ -6,7 +6,7 @@ import { useAuth } from "../../context/AuthContext";
 import Footer from "../../Components/Footer/Footer";
 import { FaCreditCard, FaArrowLeft } from "react-icons/fa";
 
-const API_BASE_URL = "http://localhost:8080";
+const API_BASE_URL = "http://localhost:18080";
 
 const Payment = () => {
   const { isDarkMode, colors } = useTheme();

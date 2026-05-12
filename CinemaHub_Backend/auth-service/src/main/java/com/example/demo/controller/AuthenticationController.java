@@ -59,8 +59,8 @@ public class AuthenticationController {
         
         String token = jwtUtils.generateToken(userDetails.getUsername(), dbUser.getRole().toString(), dbUser.getId());
 
-        // Send user logged in event to Kafka
-        authProducer.sendUserLoggedInEvent(user);
+        // Send user logged in event to Kafka (DB user: full id/username/role, no password)
+        authProducer.sendUserLoggedInEvent(dbUser);
 
         return token;
     }

@@ -16,6 +16,7 @@ import {
 import { HiOutlineCreditCard } from "react-icons/hi2";
 import { useTheme } from "../../context/ThemeContext";
 import { useAuth } from "../../context/AuthContext";
+import { useNotifications } from "../../context/NotificationsContext";
 import { useNavigate } from "react-router-dom";
 import Header from "../../Components/Header/Header";
 import Footer from "../../Components/Footer/Footer";
@@ -31,6 +32,7 @@ const preferences = [
 const UserProfile = () => {
   const { isDarkMode, colors } = useTheme();
   const { user, logout, fetchProfile, token } = useAuth();
+  const { append } = useNotifications();
   const navigate = useNavigate();
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
   const [isMembershipOpen, setIsMembershipOpen] = useState(false);
@@ -50,7 +52,7 @@ const UserProfile = () => {
   const [bookings, setBookings] = useState([]);
   const [loadingBookings, setLoadingBookings] = useState(false);
 
-  const API_BASE_URL = "http://localhost:8080";
+  const API_BASE_URL = "http://localhost:18080";
 
   const fetchUserBookings = useCallback(async () => {
     if (!user?.id || !token) return;
@@ -154,8 +156,17 @@ const UserProfile = () => {
     }
   };
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    // Show logout notification first
+    append({
+      topic: "user-logged-out",
+      title: "You have been logged out",
+      timestamp: new Date().toISOString(),
+      payload: null,
+    });
+    // Logout
+    await logout();
+    // Navigate to home immediately
     navigate('/home');
   };
 
