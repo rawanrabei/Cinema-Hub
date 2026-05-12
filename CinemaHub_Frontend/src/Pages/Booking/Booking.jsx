@@ -17,9 +17,9 @@ const Booking = () => {
   const [error, setError] = useState("");
 
   const bookingData = ticketData || {
-    movie: { title: "N/A" },
+    movie: { title: "N/A", id: null },
     cinema: { name: "N/A" },
-    showtime: { time: "N/A", date: "" },
+    showtime: { time: "N/A", date: "", id: null },
     seats: [],
     seatType: { type: "N/A" },
     ticketPrice: 0,
@@ -59,11 +59,31 @@ const Booking = () => {
         }
       }
 
+      // Validate required booking data
+      if (!bookingData.showtime?.id || !bookingData.movie?.id || !bookingData.seats || bookingData.seats.length === 0) {
+        setError("Missing booking information. Please select a movie and go through the booking flow to choose showtime and seats.");
+        setLoading(false);
+        return;
+      }
+
+      // Generate seats for the showtime before booking
+      try {
+        const generateResponse = await fetch(`${API_BASE_URL}/api/bookings/generate-seats/${bookingData.showtime.id}`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        // Continue even if seat generation fails - backend will handle it
+      } catch (genError) {
+        console.warn("Seat generation failed, continuing with booking:", genError);
+      }
+
       const bookingRequest = {
         userId: userId,
-        showtimeId: bookingData.showtime?.id || 1,
-        movieId: bookingData.movie?.id || 1,
-        seatNumbers: bookingData.seats || ["A1", "A2", "A3"],
+        showtimeId: bookingData.showtime.id,
+        movieId: bookingData.movie.id,
+        seatNumbers: bookingData.seats,
       };
 
       const response = await fetch(`${API_BASE_URL}/api/bookings`, {
@@ -77,7 +97,8 @@ const Booking = () => {
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(errorText || "Booking failed");
+        console.error("Booking failed:", errorText);
+        throw new Error(errorText || "Booking failed. Please try again.");
       }
 
       const booking = await response.json();
@@ -337,14 +358,20 @@ const Booking = () => {
               </div>
             )}
 
+            {!ticketData && (
+              <div className="mb-4 p-3 bg-yellow-100 border border-yellow-400 text-yellow-700 rounded">
+                No booking data found. Please select a movie and complete the booking flow first.
+              </div>
+            )}
+
             <div className="flex justify-center">
               <button
                 onClick={handleConfirmBooking}
-                disabled={loading}
+                disabled={loading || !ticketData}
                 className={`w-full px-6 py-4 rounded-xl text-white font-semibold transition-all ${
                   isDarkMode ? "bg-blue-600 hover:bg-blue-700" : ""
-                }`}
-                style={!isDarkMode ? { backgroundColor: colors.primary } : {}}
+                } ${!ticketData ? "opacity-50 cursor-not-allowed" : ""}`}
+                style={!isDarkMode && ticketData ? { backgroundColor: colors.primary } : {}}
                 onMouseEnter={(e) => {
                   if (isDarkMode) {
                     e.currentTarget.style.backgroundColor = "#2563eb";

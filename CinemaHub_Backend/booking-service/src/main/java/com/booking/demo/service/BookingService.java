@@ -227,6 +227,19 @@ public class BookingService {
 
         booking.setStatus("CANCELLED");
         bookingRepository.save(booking);
+
+        // Release the seats associated with this booking
+        List<Long> seatIds = bookedSeatRepository.findByBookingId(id)
+                .stream()
+                .map(BookedSeat::getSeatId)
+                .toList();
+
+        for (Long seatId : seatIds) {
+            Seat seat = seatRepository.findById(seatId)
+                    .orElseThrow(() -> new RuntimeException("Seat not found"));
+            seat.setBooked(false);
+            seatRepository.save(seat);
+        }
     }
 
 
