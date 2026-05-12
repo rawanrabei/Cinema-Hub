@@ -166,11 +166,15 @@ services:
     ports:
       - "18080:8080"
     environment:
+      - SPRING_PROFILES_ACTIVE=docker
       - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - SPRING_KAFKA_ENABLED=true
     networks:
       - cinema-network
     depends_on:
       - eureka-server
+      - kafka
       - auth-service
       - movie-service
       - booking-service
