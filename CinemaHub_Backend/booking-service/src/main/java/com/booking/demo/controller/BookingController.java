@@ -12,31 +12,33 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.booking.demo.dto.BookingRequest;
 import com.booking.demo.dto.BookingResponse;
-import com.booking.demo.producer.BookingProducer;
 import com.booking.demo.service.BookingService;
 
 @RestController
-@RequestMapping("/bookings")
+@RequestMapping("/api/bookings")
 public class BookingController {
 
     private final BookingService service;
-    private final BookingProducer bookingProducer;
 
-    public BookingController(BookingService service, BookingProducer bookingProducer) {
+    public BookingController(BookingService service) {
         this.service = service;
-        this.bookingProducer = bookingProducer;
     }
 
     @PostMapping
     public BookingResponse create(@RequestBody BookingRequest req) {
-        BookingResponse booking = service.createBooking(
+        // Checkout is held as PENDING_PAYMENT until payment succeeds; Kafka "booking-created"
+        // is emitted only from confirm after payment (see POST /{id}/confirm).
+        return service.createBooking(
                 req.getUserId(),
                 req.getShowtimeId(),
                 req.getMovieId(),
                 req.getSeatNumbers()
         );
-        bookingProducer.sendBookingCreatedEvent(booking);
-        return booking;
+    }
+
+    @PostMapping("/{id}/confirm")
+    public BookingResponse confirmAfterPayment(@PathVariable Long id) {
+        return service.confirmBookingAfterPayment(id);
     }
     @PostMapping("/generate-seats/{showtimeId}")
     public String generateSeats(@PathVariable Long showtimeId) {
@@ -62,7 +64,6 @@ public class BookingController {
     @DeleteMapping("/{id}")
     public String cancel(@PathVariable Long id) {
         service.cancelBooking(id);
-        bookingProducer.sendBookingCancelledEvent(id);
         return "Booking cancelled successfully";
     }
 }

@@ -22,15 +22,15 @@ const Login = () => {
     setError("");
     try {
       const loggedInUser = await login({ email, password });
-      
-      // Show login notification
+
       append({
         topic: "user-logged-in",
         title: `Welcome back, ${loggedInUser.name}!`,
         timestamp: new Date().toISOString(),
         payload: null,
+        ephemeral: true,
       });
-      
+
       const fromPath = location.state?.from?.pathname;
       const targetPath =
         loggedInUser.role === "member" && fromPath

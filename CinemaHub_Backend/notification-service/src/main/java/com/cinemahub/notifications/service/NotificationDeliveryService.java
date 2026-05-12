@@ -19,7 +19,14 @@ public class NotificationDeliveryService {
             return true;
         }
         if ("MANAGER".equals(r)) {
-            return NotificationPolicies.MANAGER_TOPICS.contains(topic);
+            if (!NotificationPolicies.MANAGER_TOPICS.contains(topic)) {
+                return false;
+            }
+            if ("user-logged-in".equals(topic)) {
+                Long payloadUserId = payloadUserIdExtractor.extractUserId(payload);
+                return payloadUserId != null && sessionUserId != null && payloadUserId.equals(sessionUserId);
+            }
+            return true;
         }
         if ("USER".equals(r) || "MEMBER".equals(r)) {
             if (!NotificationPolicies.USER_TOPICS.contains(topic)) {

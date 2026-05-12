@@ -3,7 +3,6 @@ package com.cinemahub.notifications.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.cinemahub.notifications.policy.NotificationPolicies;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -22,6 +21,7 @@ public class NotificationBroadcastService {
 
     private final NotificationDeliveryService deliveryService;
     private final ObjectMapper objectMapper;
+    private final NotificationTitleResolver titleResolver;
 
     private final Set<WebSocketSession> sessions = ConcurrentHashMap.newKeySet();
 
@@ -34,7 +34,7 @@ public class NotificationBroadcastService {
     }
 
     public void broadcast(String topic, String rawPayload, Long eventId, Instant createdAt) {
-        String title = NotificationPolicies.titleFor(topic);
+        String title = titleResolver.resolve(topic, rawPayload);
         String json = buildEnvelope(topic, title, rawPayload, eventId, createdAt);
         for (WebSocketSession session : java.util.Set.copyOf(sessions)) {
             if (!session.isOpen()) {

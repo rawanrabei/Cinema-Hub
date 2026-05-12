@@ -1,7 +1,9 @@
 /** English labels for Kafka topic keys (matches notification-service). */
 const TOPIC_LABEL_EN = {
   "user-registered": "User registered",
-  "user-logged-in": "User signed in",
+  /** Intentionally empty: login uses title only ("Welcome back, …") from the server. */
+  "user-logged-in": "",
+  "user-logged-out": "Signed out",
   "booking-created": "Booking created",
   "booking-cancelled": "Booking cancelled",
   "seats-booked": "Seats booked",
@@ -15,5 +17,8 @@ const TOPIC_LABEL_EN = {
 
 export function topicLabelEn(topic) {
   if (!topic) return "";
-  return TOPIC_LABEL_EN[topic] || topic.replace(/-/g, " ");
+  if (Object.prototype.hasOwnProperty.call(TOPIC_LABEL_EN, topic)) {
+    return TOPIC_LABEL_EN[topic];
+  }
+  return topic.replace(/-/g, " ");
 }

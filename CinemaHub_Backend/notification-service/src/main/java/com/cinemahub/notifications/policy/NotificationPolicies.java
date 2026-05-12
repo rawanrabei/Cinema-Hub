@@ -9,10 +9,12 @@ public final class NotificationPolicies {
             "movie-added", "movie-updated", "movie-deleted",
             "booking-created", "booking-cancelled", "seats-booked",
             "payment-requested", "payment-completed", "payment-failed",
-            "user-registered"
+            "user-registered",
+            "user-logged-in"
     );
 
     public static final Set<String> USER_TOPICS = Set.of(
+            "user-logged-in",
             "booking-created", "booking-cancelled", "seats-booked",
             "payment-requested", "payment-completed", "payment-failed"
     );

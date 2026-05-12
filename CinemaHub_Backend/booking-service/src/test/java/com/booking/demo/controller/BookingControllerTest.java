@@ -53,10 +53,18 @@ class BookingControllerTest {
     }
 
     @Test
+    void testConfirmAfterPayment_Success() throws Exception {
+        when(bookingService.confirmBookingAfterPayment(1L)).thenReturn(bookingResponse);
+
+        mockMvc.perform(post("/api/bookings/1/confirm"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
     void testCreateBooking_Success() throws Exception {
         when(bookingService.createBooking(any(), any(), any(), any())).thenReturn(bookingResponse);
 
-        mockMvc.perform(post("/bookings")
+        mockMvc.perform(post("/api/bookings")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(bookingRequest)))
                 .andExpect(status().isOk());
@@ -66,7 +74,7 @@ class BookingControllerTest {
     void testGetBooking_Success() throws Exception {
         when(bookingService.getBooking(1L)).thenReturn(bookingResponse);
 
-        mockMvc.perform(get("/bookings/1"))
+        mockMvc.perform(get("/api/bookings/1"))
                 .andExpect(status().isOk());
     }
 
@@ -75,19 +83,19 @@ class BookingControllerTest {
         List<BookingResponse> bookings = Arrays.asList(bookingResponse);
         when(bookingService.getUserBookings(1L)).thenReturn(bookings);
 
-        mockMvc.perform(get("/bookings/user/1"))
+        mockMvc.perform(get("/api/bookings/user/1"))
                 .andExpect(status().isOk());
     }
 
     @Test
     void testCancelBooking_Success() throws Exception {
-        mockMvc.perform(delete("/bookings/1"))
+        mockMvc.perform(delete("/api/bookings/1"))
                 .andExpect(status().isOk());
     }
 
     @Test
     void testGenerateSeats_Success() throws Exception {
-        mockMvc.perform(post("/bookings/generate-seats/1"))
+        mockMvc.perform(post("/api/bookings/generate-seats/1"))
                 .andExpect(status().isOk());
     }
 }

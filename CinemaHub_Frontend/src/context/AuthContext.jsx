@@ -31,6 +31,8 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => parseStorage(USER_KEY, null));
   const [token, setToken] = useState(() => localStorage.getItem(TOKEN_KEY));
   const [isLoading, setIsLoading] = useState(false);
+  /** True while session is being cleared — ProtectedRoute sends user to /home, not /login */
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -91,6 +93,7 @@ export function AuthProvider({ children }) {
           name: decoded.sub.split('@')[0],
         };
 
+        setIsLoggingOut(false);
         setToken(jwtToken);
         setUser(userData);
         return userData;
@@ -130,22 +133,26 @@ export function AuthProvider({ children }) {
   );
 
   const logout = useCallback(async () => {
-    // Call backend logout endpoint
-    if (token) {
-      try {
-        await fetch(`${API_BASE_URL}/api/auth/logout`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`,
-          },
-        });
-      } catch (error) {
-        console.error("Logout error:", error);
+    setIsLoggingOut(true);
+    try {
+      if (token) {
+        try {
+          await fetch(`${API_BASE_URL}/api/auth/logout`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${token}`,
+            },
+          });
+        } catch (error) {
+          console.error("Logout error:", error);
+        }
       }
+    } finally {
+      setToken(null);
+      setUser(null);
+      window.setTimeout(() => setIsLoggingOut(false), 400);
     }
-    setToken(null);
-    setUser(null);
   }, [token]);
 
   const fetchProfile = useCallback(async () => {
@@ -193,6 +200,7 @@ export function AuthProvider({ children }) {
       user,
       isAuthenticated: Boolean(user),
       isLoading,
+      isLoggingOut,
       roles: ROLES.map(r => r.toLowerCase()),
       defaultRole: DEFAULT_ROLE.toLowerCase(),
       login,
@@ -202,7 +210,7 @@ export function AuthProvider({ children }) {
       token,
       fetchProfile,
     }),
-    [user, isLoading, login, signup, logout, hasRole, token, fetchProfile],
+    [user, isLoading, isLoggingOut, login, signup, logout, hasRole, token, fetchProfile],
   );
 
   return (

@@ -13,6 +13,7 @@ import com.booking.demo.entity.BookedSeat;
 import com.booking.demo.entity.Booking;
 import com.booking.demo.entity.Seat;
 import com.booking.demo.entity.SeatType;
+import com.booking.demo.producer.BookingProducer;
 import com.booking.demo.repository.BookedSeatRepository;
 import com.booking.demo.repository.BookingRepository;
 import com.booking.demo.repository.SeatRepository;
@@ -23,13 +24,16 @@ public class BookingService {
     private final BookingRepository bookingRepository;
     private final SeatRepository seatRepository;
     private final BookedSeatRepository bookedSeatRepository;
+    private final BookingProducer bookingProducer;
 
     public BookingService(BookingRepository bookingRepository,
                           SeatRepository seatRepository,
-                          BookedSeatRepository bookedSeatRepository) {
+                          BookedSeatRepository bookedSeatRepository,
+                          BookingProducer bookingProducer) {
         this.bookingRepository = bookingRepository;
         this.seatRepository = seatRepository;
         this.bookedSeatRepository = bookedSeatRepository;
+        this.bookingProducer = bookingProducer;
     }
 
 
@@ -81,7 +85,7 @@ public class BookingService {
         booking.setUserId(userId);
         booking.setShowtimeId(showtimeId);
         booking.setMovieId(movieId);
-        booking.setStatus("CONFIRMED");
+        booking.setStatus("PENDING_PAYMENT");
         booking.setBookingTime(LocalDateTime.now());
 
         Booking savedBooking = bookingRepository.save(booking);
@@ -102,6 +106,33 @@ public class BookingService {
         }
 
         return mapToResponse(savedBooking, seatIds, totalPrice);
+    }
+
+    /**
+     * Marks a checkout as final after payment succeeds. Until then the booking stays
+     * {@code PENDING_PAYMENT} and should not appear as a completed ticket for the user.
+     */
+    @Transactional
+    public BookingResponse confirmBookingAfterPayment(Long bookingId) {
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new RuntimeException("Booking not found"));
+
+        if ("CANCELLED".equalsIgnoreCase(booking.getStatus())) {
+            throw new RuntimeException("Cannot confirm a cancelled booking");
+        }
+        if ("CONFIRMED".equalsIgnoreCase(booking.getStatus())) {
+            return getBooking(bookingId);
+        }
+        if (!"PENDING_PAYMENT".equalsIgnoreCase(booking.getStatus())) {
+            throw new RuntimeException("Booking cannot be confirmed from status: " + booking.getStatus());
+        }
+
+        booking.setStatus("CONFIRMED");
+        bookingRepository.save(booking);
+
+        BookingResponse confirmed = getBooking(bookingId);
+        bookingProducer.sendBookingCreatedEvent(confirmed);
+        return confirmed;
     }
 
 
@@ -187,6 +218,9 @@ public class BookingService {
         List<BookingResponse> responses = new ArrayList<>();
 
         for (Booking booking : bookings) {
+            if (!"CONFIRMED".equalsIgnoreCase(booking.getStatus())) {
+                continue;
+            }
 
             List<Long> seatIds = bookedSeatRepository.findByBookingId(booking.getId())
                     .stream()
@@ -240,6 +274,8 @@ public class BookingService {
             seat.setBooked(false);
             seatRepository.save(seat);
         }
+
+        bookingProducer.sendBookingCancelledEvent(id);
     }
 
 

@@ -17,6 +17,8 @@ const NotificationsContext = createContext(null);
 
 const MAX_ITEMS = 200;
 const TOAST_MS = 6000;
+/** Skip duplicate client-side toasts (no server id) within this window */
+const CLIENT_APPEND_DEDUPE_MS = 5000;
 
 function ToastStack({ toasts, onDismiss }) {
   if (!toasts.length) return null;
@@ -64,6 +66,12 @@ export function NotificationsProvider({ children }) {
   const wsRef = useRef(null);
   const reconnectTimer = useRef(null);
   const toastTimers = useRef(new Map());
+  const itemsRef = useRef([]);
+  const clientAppendDedupeRef = useRef(new Map());
+
+  useEffect(() => {
+    itemsRef.current = items;
+  }, [items]);
 
   const dismissToast = useCallback((toastId) => {
     const tid = toastTimers.current.get(toastId);
@@ -94,43 +102,76 @@ export function NotificationsProvider({ children }) {
 
   const append = useCallback(
     (data) => {
-      const rowId =
-        data.id != null
-          ? String(data.id)
-          : `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-      const toastId = `toast-${rowId}`;
-      setItems((prev) => {
-        if (data.id != null && prev.some((p) => String(p.id) === String(data.id))) {
-          return prev;
-        }
-        return [{ ...data, id: rowId }, ...prev].slice(0, MAX_ITEMS);
-      });
-      setUnreadCount((c) => c + 1);
-      playNotificationChime();
-      setToasts((prev) =>
-        [
-          {
-            toastId,
-            title: data.title,
-            topicKey: data.topic,
-            topicDisplay: topicLabelEn(data.topic),
-          },
-          ...prev,
-        ].slice(0, 4),
-      );
-      const timer = setTimeout(() => dismissToast(toastId), TOAST_MS);
-      toastTimers.current.set(toastId, timer);
+      const ephemeral = data.ephemeral === true;
+      const skipToast = data.skipToast === true;
+      const { ephemeral: _e, skipToast: _s, ...rest } = data;
 
-      if (typeof document !== "undefined" && document.visibilityState === "hidden") {
-        try {
-          if (Notification.permission === "granted") {
-            new Notification(data.title || "Cinema Hub", {
-              body: topicLabelEn(data.topic) || "",
-              silent: true,
-            });
+      const prev = itemsRef.current;
+      if (rest.id != null && prev.some((p) => String(p.id) === String(rest.id))) {
+        return;
+      }
+
+      const rowId =
+        rest.id != null
+          ? String(rest.id)
+          : `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+
+      if (rest.id == null) {
+        const fpKey =
+          rest.topic === "user-logged-in"
+            ? `${rest.topic ?? ""}\u0000${rest.title ?? ""}`
+            : `${rest.topic ?? ""}\u0000${rest.title ?? ""}\u0000${JSON.stringify(rest.payload ?? null)}`;
+        const now = Date.now();
+        const seenAt = clientAppendDedupeRef.current.get(fpKey);
+        if (seenAt != null && now - seenAt < CLIENT_APPEND_DEDUPE_MS) {
+          return;
+        }
+        clientAppendDedupeRef.current.set(fpKey, now);
+        if (clientAppendDedupeRef.current.size > 64) {
+          const cutoff = now - CLIENT_APPEND_DEDUPE_MS;
+          for (const [k, t] of clientAppendDedupeRef.current.entries()) {
+            if (t < cutoff) clientAppendDedupeRef.current.delete(k);
           }
-        } catch {
-          /* ignore */
+        }
+      }
+
+      const toastId = `toast-${rowId}`;
+
+      if (!ephemeral) {
+        const nextItem = { ...rest, id: rowId };
+        const next = [nextItem, ...prev].slice(0, MAX_ITEMS);
+        itemsRef.current = next;
+        setItems(next);
+        setUnreadCount((c) => c + 1);
+      }
+
+      if (!skipToast) {
+        playNotificationChime();
+        setToasts((prev) =>
+          [
+            {
+              toastId,
+              title: rest.title,
+              topicKey: rest.topic,
+              topicDisplay: topicLabelEn(rest.topic),
+            },
+            ...prev,
+          ].slice(0, 4),
+        );
+        const timer = setTimeout(() => dismissToast(toastId), TOAST_MS);
+        toastTimers.current.set(toastId, timer);
+
+        if (typeof document !== "undefined" && document.visibilityState === "hidden") {
+          try {
+            if (Notification.permission === "granted") {
+              new Notification(rest.title || "Cinema Hub", {
+                body: topicLabelEn(rest.topic) || "",
+                silent: true,
+              });
+            }
+          } catch {
+            /* ignore */
+          }
         }
       }
     },
@@ -180,11 +221,20 @@ export function NotificationsProvider({ children }) {
 
   useEffect(() => {
     if (!token) {
+      itemsRef.current = [];
       setItems([]);
+      setUnreadCount(0);
       return;
     }
     void refreshFromApi();
   }, [token, refreshFromApi]);
+
+  useEffect(() => {
+    return () => {
+      toastTimers.current.forEach((t) => clearTimeout(t));
+      toastTimers.current.clear();
+    };
+  }, []);
 
   useEffect(() => {
     if (!token) {
@@ -207,7 +257,11 @@ export function NotificationsProvider({ children }) {
       ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
-          append(data);
+          if (data.topic === "user-logged-in") {
+            append({ ...data, skipToast: true });
+          } else {
+            append(data);
+          }
         } catch {
           /* ignore malformed */
         }
@@ -240,8 +294,6 @@ export function NotificationsProvider({ children }) {
         wsRef.current.close();
         wsRef.current = null;
       }
-      toastTimers.current.forEach((t) => clearTimeout(t));
-      toastTimers.current.clear();
     };
   }, [token, append]);
 

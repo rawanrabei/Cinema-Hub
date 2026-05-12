@@ -84,9 +84,9 @@ export default function Notifications() {
 
           >
 
-            History loads from the database via the API; live updates arrive from Kafka
+            Your recent activity and reminders show up here. New items appear automatically
 
-            over WebSocket.
+            while you use Cinema Hub.
 
           </p>
 
@@ -130,9 +130,11 @@ export default function Notifications() {
 
             <p className="text-center max-w-md">
 
-              No notifications yet. After sign-in, history is loaded from MySQL; new events
+              You don't have any notifications yet. When something happens on your
 
-              appear here with a sound alert.
+              account—like a booking or an important update—you'll see it here, and
+
+              we'll play a short sound for new alerts.
 
             </p>
 
@@ -142,7 +144,9 @@ export default function Notifications() {
 
           <ul className="space-y-3">
 
-            {items.map((n) => (
+            {items.map((n) => {
+              const topicTypeLabel = topicLabelEn(n.topic);
+              return (
 
               <li
 
@@ -212,8 +216,13 @@ export default function Notifications() {
 
                     
 
-                    <div className="flex items-center justify-between gap-2 mb-3">
+                    <div
+                      className={`flex items-center gap-2 mb-3 ${
+                        topicTypeLabel ? "justify-between" : "justify-end"
+                      }`}
+                    >
 
+                      {topicTypeLabel ? (
                       <span
 
                         className="text-xs font-medium px-2 py-1 rounded-full"
@@ -228,9 +237,10 @@ export default function Notifications() {
 
                       >
 
-                        {topicLabelEn(n.topic)}
+                        {topicTypeLabel}
 
                       </span>
+                      ) : null}
 
                       <button
 
@@ -260,7 +270,8 @@ export default function Notifications() {
 
               </li>
 
-            ))}
+            );
+            })}
 
           </ul>
 

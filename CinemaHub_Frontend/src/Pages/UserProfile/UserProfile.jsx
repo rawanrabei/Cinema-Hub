@@ -17,7 +17,6 @@ import { HiOutlineCreditCard } from "react-icons/hi2";
 import { useTheme } from "../../context/ThemeContext";
 import { useAuth } from "../../context/AuthContext";
 import { useNotifications } from "../../context/NotificationsContext";
-import { useNavigate } from "react-router-dom";
 import Header from "../../Components/Header/Header";
 import Footer from "../../Components/Footer/Footer";
 
@@ -33,7 +32,6 @@ const UserProfile = () => {
   const { isDarkMode, colors } = useTheme();
   const { user, logout, fetchProfile, token } = useAuth();
   const { append } = useNotifications();
-  const navigate = useNavigate();
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
   const [isMembershipOpen, setIsMembershipOpen] = useState(false);
   const [displayUser, setDisplayUser] = useState({
@@ -157,17 +155,13 @@ const UserProfile = () => {
   };
 
   const handleLogout = async () => {
-    // Show logout notification first
     append({
       topic: "user-logged-out",
       title: "You have been logged out",
       timestamp: new Date().toISOString(),
       payload: null,
     });
-    // Logout
     await logout();
-    // Navigate to home immediately
-    navigate('/home');
   };
 
   const handleEditProfile = () => {

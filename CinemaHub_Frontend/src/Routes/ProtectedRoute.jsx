@@ -3,7 +3,7 @@ import { useAuth } from "../context/AuthContext";
 import { getRoleRedirect } from "../Pages/Auth/components/auth.constants";
 
 const ProtectedRoute = ({ allowedRoles = [] }) => {
-  const { user, hasRole } = useAuth();
+  const { user, hasRole, isLoggingOut } = useAuth();
   const location = useLocation();
 
   // Allow access to home page without authentication
@@ -12,6 +12,9 @@ const ProtectedRoute = ({ allowedRoles = [] }) => {
   }
 
   if (!user) {
+    if (isLoggingOut) {
+      return <Navigate to="/home" replace />;
+    }
     return (
       <Navigate
         to="/login"

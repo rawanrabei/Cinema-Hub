@@ -395,7 +395,7 @@ const Booking = () => {
                   }
                 }}
               >
-                {loading ? "Processing..." : "Confirm Booking"}
+                {loading ? "Processing..." : "Continue to payment"}
               </button>
             </div>
           </div>
