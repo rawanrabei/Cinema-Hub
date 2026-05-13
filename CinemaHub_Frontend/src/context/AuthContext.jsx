@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { API_BASE_URL } from "../config/api";
@@ -33,6 +34,12 @@ export function AuthProvider({ children }) {
   const [isLoading, setIsLoading] = useState(false);
   /** True while session is being cleared — ProtectedRoute sends user to /home, not /login */
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  /** Same as `token` but updated synchronously on login/logout so in-flight fetchProfile cannot restore session */
+  const tokenRef = useRef(token);
+
+  useEffect(() => {
+    tokenRef.current = token;
+  }, [token]);
 
   useEffect(() => {
     if (user) {
@@ -94,6 +101,7 @@ export function AuthProvider({ children }) {
         };
 
         setIsLoggingOut(false);
+        tokenRef.current = jwtToken;
         setToken(jwtToken);
         setUser(userData);
         return userData;
@@ -132,38 +140,36 @@ export function AuthProvider({ children }) {
     [withAuthLoading, login],
   );
 
-  const logout = useCallback(async () => {
+  const logout = useCallback(() => {
     setIsLoggingOut(true);
-    try {
-      if (token) {
-        try {
-          await fetch(`${API_BASE_URL}/api/auth/logout`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "Authorization": `Bearer ${token}`,
-            },
-          });
-        } catch (error) {
-          console.error("Logout error:", error);
-        }
-      }
-    } finally {
-      setToken(null);
-      setUser(null);
-      window.setTimeout(() => setIsLoggingOut(false), 400);
+    tokenRef.current = null;
+    const authToken = token;
+    if (authToken) {
+      void fetch(`${API_BASE_URL}/api/auth/logout`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${authToken}`,
+        },
+      }).catch((error) => {
+        console.error("Logout error:", error);
+      });
     }
+    setToken(null);
+    setUser(null);
+    window.setTimeout(() => setIsLoggingOut(false), 400);
   }, [token]);
 
   const fetchProfile = useCallback(async () => {
     if (!token) return null;
-    
+    const requestToken = token;
+
     return withAuthLoading(async () => {
       const response = await fetch(`${API_BASE_URL}/api/auth/profile`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
+          "Authorization": `Bearer ${requestToken}`,
         },
       });
 
@@ -172,8 +178,16 @@ export function AuthProvider({ children }) {
         return null;
       }
 
+      if (tokenRef.current !== requestToken) {
+        return null;
+      }
+
       const profileData = await response.json();
-      
+
+      if (tokenRef.current !== requestToken) {
+        return null;
+      }
+
       const userData = {
         id: profileData.id,
         email: profileData.email,

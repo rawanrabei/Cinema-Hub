@@ -22,13 +22,12 @@ public class NotificationDeliveryService {
             if (!NotificationPolicies.MANAGER_TOPICS.contains(topic)) {
                 return false;
             }
-            if ("user-logged-in".equals(topic)) {
-                Long payloadUserId = payloadUserIdExtractor.extractUserId(payload);
-                return payloadUserId != null && sessionUserId != null && payloadUserId.equals(sessionUserId);
-            }
             return true;
         }
         if ("USER".equals(r) || "MEMBER".equals(r)) {
+            if (NotificationPolicies.MOVIE_TOPICS.contains(topic)) {
+                return true;
+            }
             if (!NotificationPolicies.USER_TOPICS.contains(topic)) {
                 return false;
             }

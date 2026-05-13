@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 
 import PageShell from "../Components/Common/PageShell";
 
@@ -6,7 +6,7 @@ import { useTheme } from "../context/ThemeContext";
 
 import { useNotifications } from "../context/NotificationsContext";
 
-import { topicLabelEn } from "../utils/notificationLabels";
+import { topicLabelEn, toastNotificationLine, isUserTopic } from "../utils/notificationLabels";
 
 import { 
 
@@ -30,6 +30,11 @@ import {
 export default function Notifications() {
   const { isDarkMode, colors } = useTheme();
   const { items, markAllRead, refreshFromApi, deleteAllNotifications, deleteNotification } = useNotifications();
+
+  const visibleItems = useMemo(
+    () => items.filter((n) => !isUserTopic(n.topic)),
+    [items],
+  );
 
 
   useEffect(() => {
@@ -90,7 +95,7 @@ export default function Notifications() {
 
           </p>
 
-          {items.length > 0 && (
+          {visibleItems.length > 0 && (
 
             <button
 
@@ -122,7 +127,7 @@ export default function Notifications() {
 
 
 
-        {items.length === 0 ? (
+        {visibleItems.length === 0 ? (
 
           <div className={`flex flex-col items-center justify-center py-16 ${isDarkMode ? "text-gray-500" : "text-gray-500"}`}>
 
@@ -144,7 +149,7 @@ export default function Notifications() {
 
           <ul className="space-y-3">
 
-            {items.map((n) => {
+            {visibleItems.map((n) => {
               const topicTypeLabel = topicLabelEn(n.topic);
               return (
 
@@ -196,7 +201,7 @@ export default function Notifications() {
 
                       >
 
-                        {n.title}
+                        {toastNotificationLine(n)}
 
                       </span>
 

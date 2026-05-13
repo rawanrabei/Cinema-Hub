@@ -9,6 +9,9 @@ import org.springframework.stereotype.Service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
+
 @Service
 public class MovieProducer {
 
@@ -48,13 +51,18 @@ public class MovieProducer {
         }
     }
 
-    public void sendMovieDeletedEvent(Long movieId) {
+    public void sendMovieDeletedEvent(Long movieId, String movieTitle) {
         if (kafkaTemplate == null) {
             logger.warn("Kafka is disabled, skipping movie deleted event");
             return;
         }
         try {
-            String message = objectMapper.writeValueAsString(movieId);
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("id", movieId);
+            if (movieTitle != null && !movieTitle.isBlank()) {
+                body.put("title", movieTitle.trim());
+            }
+            String message = objectMapper.writeValueAsString(body);
             kafkaTemplate.send("movie-deleted", message);
             logger.info("Movie deleted event sent: {}", message);
         } catch (JsonProcessingException e) {

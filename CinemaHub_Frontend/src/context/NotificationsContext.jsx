@@ -11,7 +11,7 @@ import { useAuth } from "./AuthContext";
 import { getNotificationsPath } from "../Pages/Auth/components/auth.constants";
 import { API_BASE_URL, WS_NOTIFICATIONS_URL } from "../config/api";
 import { playNotificationChime } from "../utils/notificationSound";
-import { topicLabelEn } from "../utils/notificationLabels";
+import { topicLabelEn, isUserTopic, toastNotificationLine } from "../utils/notificationLabels";
 
 const NotificationsContext = createContext(null);
 
@@ -35,7 +35,9 @@ function ToastStack({ toasts, onDismiss }) {
         >
           <div className="flex justify-between gap-3 items-start">
             <div className="min-w-0 flex-1">
-              <p className="font-semibold text-sm leading-snug">{t.title}</p>
+              <p className="font-semibold text-sm leading-snug">
+                {toastNotificationLine(t)}
+              </p>
             </div>
             <button
               type="button"
@@ -90,10 +92,12 @@ export function NotificationsProvider({ children }) {
       const rows = await res.json();
       if (!Array.isArray(rows)) return;
       setItems(
-        rows.map((r) => ({
-          ...r,
-          id: String(r.id),
-        })),
+        rows
+          .filter((r) => !isUserTopic(r.topic))
+          .map((r) => ({
+            ...r,
+            id: String(r.id),
+          })),
       );
     } catch {
       /* ignore */
@@ -106,6 +110,10 @@ export function NotificationsProvider({ children }) {
       const skipToast = data.skipToast === true;
       const { ephemeral: _e, skipToast: _s, ...rest } = data;
 
+      if (isUserTopic(rest.topic)) {
+        return;
+      }
+
       const prev = itemsRef.current;
       if (rest.id != null && prev.some((p) => String(p.id) === String(rest.id))) {
         return;
@@ -117,10 +125,7 @@ export function NotificationsProvider({ children }) {
           : `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 
       if (rest.id == null) {
-        const fpKey =
-          rest.topic === "user-logged-in"
-            ? `${rest.topic ?? ""}\u0000${rest.title ?? ""}`
-            : `${rest.topic ?? ""}\u0000${rest.title ?? ""}\u0000${JSON.stringify(rest.payload ?? null)}`;
+        const fpKey = `${rest.topic ?? ""}\u0000${rest.title ?? ""}\u0000${JSON.stringify(rest.payload ?? null)}`;
         const now = Date.now();
         const seenAt = clientAppendDedupeRef.current.get(fpKey);
         if (seenAt != null && now - seenAt < CLIENT_APPEND_DEDUPE_MS) {
@@ -152,6 +157,8 @@ export function NotificationsProvider({ children }) {
             {
               toastId,
               title: rest.title,
+              topic: rest.topic,
+              payload: rest.payload,
               topicKey: rest.topic,
               topicDisplay: topicLabelEn(rest.topic),
             },
@@ -164,8 +171,8 @@ export function NotificationsProvider({ children }) {
         if (typeof document !== "undefined" && document.visibilityState === "hidden") {
           try {
             if (Notification.permission === "granted") {
-              new Notification(rest.title || "Cinema Hub", {
-                body: topicLabelEn(rest.topic) || "",
+              new Notification(toastNotificationLine(rest) || "Cinema Hub", {
+                body: topicLabelEn(rest.topic) || (rest.topic ? rest.topic.replace(/-/g, " ") : ""),
                 silent: true,
               });
             }
@@ -254,14 +261,17 @@ export function NotificationsProvider({ children }) {
       const ws = new WebSocket(url);
       wsRef.current = ws;
 
+      ws.onopen = () => {
+        void refreshFromApi();
+      };
+
       ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
-          if (data.topic === "user-logged-in") {
-            append({ ...data, skipToast: true });
-          } else {
-            append(data);
+          if (isUserTopic(data.topic)) {
+            return;
           }
+          append(data);
         } catch {
           /* ignore malformed */
         }
@@ -295,7 +305,7 @@ export function NotificationsProvider({ children }) {
         wsRef.current = null;
       }
     };
-  }, [token, append]);
+  }, [token, append, refreshFromApi]);
 
   useEffect(() => {
     if (typeof Notification === "undefined" || Notification.permission !== "default") {

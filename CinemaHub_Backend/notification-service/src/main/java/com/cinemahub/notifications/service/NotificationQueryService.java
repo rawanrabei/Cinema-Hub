@@ -29,7 +29,7 @@ public class NotificationQueryService {
 
         Page<NotificationEvent> result;
         if ("ADMIN".equals(role)) {
-            result = repository.findAllByOrderByCreatedAtDesc(pageable);
+            result = repository.findAllExcludingUserTopicsOrderByCreatedAtDesc(pageable);
         } else if ("MANAGER".equals(role)) {
             result = repository.findByTopicInOrderByCreatedAtDesc(NotificationPolicies.MANAGER_TOPICS, pageable);
         } else {
@@ -37,8 +37,9 @@ public class NotificationQueryService {
             if (uid == null) {
                 result = Page.empty(pageable);
             } else {
-                result = repository.findByTopicInAndPayloadUserIdOrderByCreatedAtDesc(
+                result = repository.findMemberFeed(
                         NotificationPolicies.USER_TOPICS,
+                        NotificationPolicies.MOVIE_TOPICS,
                         uid,
                         pageable
                 );

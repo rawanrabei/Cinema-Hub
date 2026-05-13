@@ -156,10 +156,11 @@ const UserProfile = () => {
 
   const handleLogout = async () => {
     append({
-      topic: "user-logged-out",
+      topic: "client-session-logout",
       title: "You have been logged out",
       timestamp: new Date().toISOString(),
       payload: null,
+      ephemeral: true,
     });
     await logout();
   };
@@ -230,6 +231,7 @@ const UserProfile = () => {
                 Edit Profile
               </button>
               <button
+                type="button"
                 onClick={handleLogout}
                 className={`px-5 py-3 rounded-xl font-semibold transition flex items-center gap-2 ${
                   isDarkMode ? "bg-gray-100 hover:bg-white text-gray-900" : "bg-white hover:bg-gray-100 text-[#FF0800]"

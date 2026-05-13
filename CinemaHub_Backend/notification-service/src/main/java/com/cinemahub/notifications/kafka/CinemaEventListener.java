@@ -19,7 +19,7 @@ public class CinemaEventListener {
     private final NotificationArchiveService archiveService;
 
     @KafkaListener(
-            topicPattern = "user-registered|user-logged-in|booking-created|booking-cancelled|seats-booked|"
+            topicPattern = "booking-created|booking-cancelled|seats-booked|"
                     + "payment-requested|payment-completed|payment-failed|"
                     + "movie-added|movie-updated|movie-deleted",
             groupId = "${spring.kafka.consumer.group-id}"

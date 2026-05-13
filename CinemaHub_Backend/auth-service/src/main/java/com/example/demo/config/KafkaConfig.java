@@ -22,12 +22,4 @@ public class KafkaConfig {
                 .replicas(1)
                 .build();
     }
-
-    @Bean
-    public NewTopic userLoggedInTopic() {
-        return TopicBuilder.name("user-logged-in")
-                .partitions(3)
-                .replicas(1)
-                .build();
-    }
 }

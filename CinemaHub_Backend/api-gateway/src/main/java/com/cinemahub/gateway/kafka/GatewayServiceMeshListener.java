@@ -18,7 +18,7 @@ public class GatewayServiceMeshListener {
     private static final Logger log = LoggerFactory.getLogger(GatewayServiceMeshListener.class);
 
     private static final String DOMAIN_TOPIC_PATTERN =
-            "user-registered|user-logged-in|booking-created|booking-cancelled|seats-booked|"
+            "booking-created|booking-cancelled|seats-booked|"
                     + "payment-requested|payment-completed|payment-failed|"
                     + "movie-added|movie-updated|movie-deleted";
 

@@ -24,8 +24,8 @@ const Login = () => {
       const loggedInUser = await login({ email, password });
 
       append({
-        topic: "user-logged-in",
-        title: `Welcome back, ${loggedInUser.name}!`,
+        topic: "client-session-login",
+        title: `Welcome back, ${loggedInUser.name || "friend"}!`,
         timestamp: new Date().toISOString(),
         payload: null,
         ephemeral: true,

@@ -49,7 +49,8 @@ public class MovieController {
     //Admin Delete Movie
     @DeleteMapping("/{id}")
     public void deleteMovie(@PathVariable Long id) {
+        Movie existing = movieService.getMovieById(id);
         movieService.deleteMovie(id);
-        movieProducer.sendMovieDeletedEvent(id);
+        movieProducer.sendMovieDeletedEvent(id, existing.getTitle());
     }
 }

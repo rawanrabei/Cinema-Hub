@@ -8,20 +8,20 @@ public final class NotificationPolicies {
     public static final Set<String> MANAGER_TOPICS = Set.of(
             "movie-added", "movie-updated", "movie-deleted",
             "booking-created", "booking-cancelled", "seats-booked",
-            "payment-requested", "payment-completed", "payment-failed",
-            "user-registered",
-            "user-logged-in"
+            "payment-requested", "payment-completed", "payment-failed"
     );
 
     public static final Set<String> USER_TOPICS = Set.of(
-            "user-logged-in",
             "booking-created", "booking-cancelled", "seats-booked",
             "payment-requested", "payment-completed", "payment-failed"
     );
 
+    /** Shown to all signed-in members (payload has no userId). */
+    public static final Set<String> MOVIE_TOPICS = Set.of(
+            "movie-added", "movie-updated", "movie-deleted"
+    );
+
     private static final Map<String, String> TOPIC_TITLES = Map.ofEntries(
-            Map.entry("user-registered", "New user registered"),
-            Map.entry("user-logged-in", "User signed in"),
             Map.entry("booking-created", "New booking"),
             Map.entry("booking-cancelled", "Booking cancelled"),
             Map.entry("seats-booked", "Seats booked"),

@@ -87,17 +87,4 @@ public class AuthProducer {
         }
     }
 
-    public void sendUserLoggedInEvent(Object user) {
-        if (kafkaTemplate == null) {
-            logger.warn("Kafka is disabled, skipping user logged in event");
-            return;
-        }
-        try {
-            String message = toEventJson(user);
-            kafkaTemplate.send("user-logged-in", message);
-            logger.info("User logged in event sent: {}", message);
-        } catch (JsonProcessingException e) {
-            logger.error("Error serializing user event", e);
-        }
-    }
 }
