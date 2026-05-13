@@ -62,15 +62,11 @@ export default function Notifications() {
 
 
   const getNotificationColor = (topic) => {
-
-    if (topic.includes('user')) return isDarkMode ? '#a855f7' : '#9333ea';
-
-    if (topic.includes('movie')) return isDarkMode ? '#3b82f6' : '#2563eb';
-
-    if (topic.includes('booking')) return isDarkMode ? '#22c55e' : '#16a34a';
-
-    return isDarkMode ? '#f59e0b' : '#d97706';
-
+    if (isDarkMode) return colors.primary;
+    if (topic.includes('user')) return '#9333ea';
+    if (topic.includes('movie')) return '#2563eb';
+    if (topic.includes('booking')) return '#16a34a';
+    return '#d97706';
   };
 
 

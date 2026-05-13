@@ -8,6 +8,7 @@ import {
   useState,
 } from "react";
 import { useAuth } from "./AuthContext";
+import { useTheme } from "./ThemeContext";
 import { getNotificationsPath } from "../Pages/Auth/components/auth.constants";
 import { API_BASE_URL, WS_NOTIFICATIONS_URL } from "../config/api";
 import { playNotificationChime } from "../utils/notificationSound";
@@ -21,6 +22,7 @@ const TOAST_MS = 6000;
 const CLIENT_APPEND_DEDUPE_MS = 5000;
 
 function ToastStack({ toasts, onDismiss }) {
+  const { isDarkMode, colors } = useTheme();
   if (!toasts.length) return null;
   return (
     <div
@@ -30,8 +32,13 @@ function ToastStack({ toasts, onDismiss }) {
       {toasts.map((t) => (
         <div
           key={t.toastId}
-          className="pointer-events-auto w-full max-w-lg mx-auto rounded-xl border border-red-500 bg-white text-red-600 shadow-2xl px-4 py-3 backdrop-blur-md"
-          style={{ animation: "toastIn 0.22s ease-out" }}
+          className="pointer-events-auto w-full max-w-lg mx-auto rounded-xl border shadow-2xl px-4 py-3 backdrop-blur-md"
+          style={{
+            borderColor: colors.primary,
+            backgroundColor: isDarkMode ? 'rgba(15, 15, 15, 0.95)' : 'white',
+            color: colors.primary,
+            animation: "toastIn 0.22s ease-out"
+          }}
         >
           <div className="flex justify-between gap-3 items-start">
             <div className="min-w-0 flex-1">
@@ -41,7 +48,8 @@ function ToastStack({ toasts, onDismiss }) {
             </div>
             <button
               type="button"
-              className="text-red-400 hover:text-red-600 shrink-0 text-xl leading-none px-1"
+              className="shrink-0 text-xl leading-none px-1 hover:opacity-70"
+              style={{ color: colors.primary }}
               onClick={() => onDismiss(t.toastId)}
               aria-label="Dismiss"
             >
