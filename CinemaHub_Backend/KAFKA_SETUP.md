@@ -40,7 +40,7 @@ Cinema Hub uses Apache Kafka for event-driven communication between microservice
 - **movie-updated**: Published when a movie is updated
 - **movie-deleted**: Published when a movie is deleted
 
-## Event Flow Examples
+## Event Flow 
 
 ### Booking Flow
 1. **User creates booking** → Booking Service publishes to `booking-created`
@@ -81,94 +81,7 @@ services:
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
 ```
 
-Run with:
-```bash
-docker-compose -f kafka-docker-compose.yml up -d
-```
 
-### Option 2: Individual Docker Containers
-```bash
-# Pull Zookeeper
-docker pull confluentinc/cp-zookeeper:7.5.0
-
-# Pull Kafka
-docker pull confluentinc/cp-kafka:7.5.0
-
-# Run Zookeeper
-docker run -d --name zookeeper \
-  -p 2181:2181 \
-  -e ZOOKEEPER_CLIENT_PORT=2181 \
-  -e ZOOKEEPER_TICK_TIME=2000 \
-  confluentinc/cp-zookeeper:7.5.0
-
-# Run Kafka
-docker run -d --name kafka \
-  -p 9092:9092 \
-  --link zookeeper:zookeeper \
-  -e KAFKA_BROKER_ID=1 \
-  -e KAFKA_ZOOKEEPER_CONNECT=zookeeper:2181 \
-  -e KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://localhost:9092 \
-  -e KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1 \
-  confluentinc/cp-kafka:7.5.0
-```
-
-### Option 3: Local Installation
-Download Kafka from: https://kafka.apache.org/downloads
-
-```bash
-# Start Zookeeper
-bin/zookeeper-server-start.sh config/zookeeper.properties
-
-# Start Kafka
-bin/kafka-server-start.sh config/server.properties
-```
-
-## Service Configuration
-
-Each service has Kafka configuration in `application.properties`:
-
-```properties
-# Kafka Configuration
-spring.kafka.bootstrap-servers=localhost:9092
-spring.kafka.consumer.group-id=<service-name>-group
-spring.kafka.consumer.auto-offset-reset=earliest
-spring.kafka.consumer.key-deserializer=org.apache.kafka.common.serialization.StringDeserializer
-spring.kafka.consumer.value-deserializer=org.apache.kafka.common.serialization.StringDeserializer
-spring.kafka.producer.key-serializer=org.apache.kafka.common.serialization.StringSerializer
-spring.kafka.producer.value-serializer=org.apache.kafka.common.serialization.StringSerializer
-```
-
-## Testing Kafka
-
-### Create a Topic
-```bash
-docker exec -it kafka kafka-topics --create \
-  --topic test-topic \
-  --bootstrap-server localhost:9092 \
-  --partitions 1 \
-  --replication-factor 1
-```
-
-### List Topics
-```bash
-docker exec -it kafka kafka-topics --list \
-  --bootstrap-server localhost:9092
-```
-
-### Produce a Message
-```bash
-docker exec -it kafka kafka-console-producer \
-  --topic test-topic \
-  --bootstrap-server localhost:9092
-```
-
-### Consume Messages
-```bash
-docker exec -it kafka kafka-console-consumer \
-  --topic test-topic \
-  --bootstrap-server localhost:9092 \
-  --from-beginning
-```
 
 ## Service Startup Order
 
@@ -185,57 +98,9 @@ docker exec -it kafka kafka-console-consumer \
    - Payment Service
    - API Gateway
 
-## Troubleshooting
 
-### Kafka Connection Issues
-- Verify Kafka is running: `docker ps | grep kafka`
-- Check Kafka logs: `docker logs kafka`
-- Verify port 9092 is accessible: `netstat -an | findstr 9092`
 
-### Topic Not Found
-- Topics are auto-created by Spring Boot on startup
-- Verify topics exist: `docker exec -it kafka kafka-topics --list --bootstrap-server localhost:9092`
 
-### Consumer Not Receiving Messages
-- Check consumer group ID matches
-- Verify topic subscription
-- Check consumer logs for errors
 
-## Monitoring
 
-### Kafka UI (Optional)
-Add to docker-compose.yml:
-```yaml
-  kafka-ui:
-    image: provectuslabs/kafka-ui:latest
-    ports:
-      - "8085:8080"
-    environment:
-      KAFKA_CLUSTERS_0_NAME: local
-      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
-      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
-```
 
-Access at: http://localhost:8085
-
-## Production Considerations
-
-1. **Replication Factor**: Set to 3 for production
-2. **Partitions**: Increase based on expected load
-3. **Retention**: Configure appropriate retention policies
-4. **Security**: Enable SSL/SASL for production
-5. **Monitoring**: Use Kafka Manager or Confluent Control Center
-6. **Backup**: Regular backups of Kafka topics
-
-## Cleanup
-
-```bash
-# Stop containers
-docker-compose -f kafka-docker-compose.yml down
-
-# Remove volumes
-docker-compose -f kafka-docker-compose.yml down -v
-
-# Remove all Kafka data
-docker volume prune
-```
