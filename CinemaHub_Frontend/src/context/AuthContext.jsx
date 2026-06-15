@@ -83,16 +83,23 @@ export function AuthProvider({ children }) {
         }
 
         const jwtToken = await response.text();
-        
-        // Decode JWT to get user info (simple implementation)
-        const base64Url = jwtToken.split('.')[1];
-        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-        const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
-          return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-        }).join(''));
-        
-        const decoded = JSON.parse(jsonPayload);
-        
+
+        // Decode JWT to get user info (robust url-safe base64 parsing)
+        const decodeJwtPayload = (token) => {
+          const base64Url = token.split('.')[1] || '';
+          let base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+          while (base64.length % 4 !== 0) base64 += '=';
+          const jsonPayload = decodeURIComponent(
+            atob(base64)
+              .split('')
+              .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+              .join(''),
+          );
+          return JSON.parse(jsonPayload);
+        };
+
+        const decoded = decodeJwtPayload(jwtToken);
+
         const userData = {
           id: decoded.userId || decoded.sub,
           email: decoded.sub,
